@@ -1,0 +1,37 @@
+# Copyright AGNTCY Contributors (https://github.com/agntcy)
+# SPDX-License-Identifier: Apache-2.0
+
+version: "3"
+
+vars:
+  BIN_DIR: ./.bin
+
+tasks:
+  default:
+    desc: Show available tasks
+    cmd: task --list
+
+  build:
+    desc: Build the MCP server
+    vars:
+      GOOS: "{{ .GOOS | default OS }}"
+      GOARCH: "{{ .GOARCH | default ARCH }}"
+      OUT_BINARY: "{{ .BIN_DIR }}/mcp-server"
+    cmds:
+      - mkdir -p {{ .BIN_DIR }}
+      - CGO_ENABLED=0 GOOS={{.GOOS}} GOARCH={{.GOARCH}} go build -o "{{.OUT_BINARY}}" main.go
+
+  test:
+    desc: Run tests
+    cmds:
+      - go test ./...
+
+  lint:
+    desc: Run linters
+    cmds:
+      - golangci-lint run ./...
+
+  clean:
+    desc: Clean build artifacts
+    cmds:
+      - rm -rf {{ .BIN_DIR }}
