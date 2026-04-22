@@ -10,9 +10,9 @@ import (
 	"os"
 	"strings"
 
-	corev1 "github.com/agntcy/dir/api/core/v1"
 	"github.com/agntcy/dir-mcp/prompts"
 	"github.com/agntcy/dir-mcp/tools"
+	corev1 "github.com/agntcy/dir/api/core/v1"
 	"github.com/modelcontextprotocol/go-sdk/mcp"
 )
 
@@ -38,6 +38,7 @@ func Serve(ctx context.Context) error {
 	if err != nil {
 		return fmt.Errorf("failed to create Directory client: %w", err)
 	}
+
 	defer func() { _ = t.Close() }()
 
 	// Create MCP server for Directory operations
