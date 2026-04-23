@@ -16,7 +16,7 @@ permissions:
 
 jobs:
   test:
-    name: Test
+    name: Unit Test
     runs-on: ubuntu-latest
     steps:
       - name: Checkout code
@@ -28,12 +28,33 @@ jobs:
           go-version-file: go.mod
           cache: true
 
-      - name: Run tests
+      - name: Run unit tests
         run: go test -race ./...
+
+  e2e:
+    name: E2E Test
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+
+      - name: Setup Go
+        uses: actions/setup-go@d35c59abb061a4a6fb18e82ac0862c26744d6ab5 # v5.5.0
+        with:
+          go-version-file: go.mod
+          cache: true
+
+      - name: Install Task
+        uses: go-task/setup-task@3be4020d41929789a01026e0e427a4321ce0ad44 # v2.0.0
+
+      - name: Run e2e tests
+        run: task test:e2e
 
   docker:
     name: Docker Image
-    needs: test
+    needs:
+      - test
+      - e2e
     runs-on: ubuntu-latest
     steps:
       - name: Checkout code
@@ -63,7 +84,7 @@ jobs:
         uses: docker/setup-buildx-action@b5ca514318bd6ebac0fb2aedd5d36ec1b5c232a2 # v3.10.0
 
       - name: Build and push
-        uses: docker/build-push-action@263435318d21b8e681c14492fe198e19c3bc3c4e # v6.18.0
+        uses: docker/build-push-action@bcafcacb16a39f128d818304e6c9c0c18556b85f # v7.1.0
         with:
           context: .
           push: true
