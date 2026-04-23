@@ -39,6 +39,12 @@ tasks:
     cmds:
       - golangci-lint run ./...
 
+  license:
+    desc: Run license check
+    cmds:
+      - licensei cache
+      - licensei check
+
   clean:
     desc: Clean build artifacts
     cmds:
