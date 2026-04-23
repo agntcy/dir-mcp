@@ -5,6 +5,8 @@ version: "3"
 
 vars:
   BIN_DIR: ./.bin
+  IMAGE_REPO: '{{ .IMAGE_REPO | default "ghcr.io/agntcy/dir-mcp" }}'
+  IMAGE_TAG: '{{ .IMAGE_TAG | default "latest" }}'
 
 tasks:
   default:
@@ -12,7 +14,7 @@ tasks:
     cmd: task --list
 
   build:
-    desc: Build the MCP server
+    desc: Build the MCP server binary
     vars:
       GOOS: "{{ .GOOS | default OS }}"
       GOARCH: "{{ .GOARCH | default ARCH }}"
@@ -23,16 +25,27 @@ tasks:
 
   docker:build:
     desc: Build the Docker image
-    vars:
-      IMAGE_TAG: '{{ .IMAGE_TAG | default "latest" }}'
-      IMAGE_REPO: '{{ .IMAGE_REPO | default "ghcr.io/agntcy/dir-mcp" }}'
     cmds:
       - docker build -t {{ .IMAGE_REPO }}:{{ .IMAGE_TAG }} .
 
   test:
-    desc: Run tests
+    desc: Run all tests (unit + e2e)
     cmds:
-      - go test ./...
+      - task: test:unit
+      - task: test:e2e
+
+  test:unit:
+    desc: Run unit tests
+    cmds:
+      - go test -count=1 ./...
+
+  test:e2e:
+    desc: Run e2e tests
+    dir: tests/e2e
+    env:
+      OASF_API_VALIDATION_SCHEMA_URL: '{{ .OASF_API_VALIDATION_SCHEMA_URL | default "https://schema.oasf.outshift.com" }}'
+    cmds:
+      - go test -v -timeout 5m ./...
 
   lint:
     desc: Run linters
