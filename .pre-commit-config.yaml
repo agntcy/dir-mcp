@@ -6,6 +6,6 @@ repos:
         description: Run golangci-lint with auto-fix on staged Go files.
         entry: "task pre-commit:golangci-lint -- "
         language: system
-        pass_filenames: true
+        pass_filenames: false
         types: [go]
         require_serial: true
