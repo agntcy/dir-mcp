@@ -21,6 +21,14 @@ tasks:
       - mkdir -p {{ .BIN_DIR }}
       - CGO_ENABLED=0 GOOS={{.GOOS}} GOARCH={{.GOARCH}} go build -o "{{.OUT_BINARY}}" main.go
 
+  docker:build:
+    desc: Build the Docker image
+    vars:
+      IMAGE_TAG: '{{ .IMAGE_TAG | default "latest" }}'
+      IMAGE_REPO: '{{ .IMAGE_REPO | default "ghcr.io/agntcy/dir-mcp" }}'
+    cmds:
+      - docker build -t {{ .IMAGE_REPO }}:{{ .IMAGE_TAG }} .
+
   test:
     desc: Run tests
     cmds:
@@ -30,6 +38,24 @@ tasks:
     desc: Run linters
     cmds:
       - golangci-lint run ./...
+
+  license:
+    desc: Run license check
+    cmds:
+      - licensei cache
+      - licensei check
+
+  pre-commit:golangci-lint:
+    desc: Run golangci-lint pre-commit hook
+    cmds:
+      - golangci-lint run --fix {{.CLI_ARGS | default "./..."}}
+
+  deps:
+    desc: Install development dependencies and git hooks
+    cmds:
+      - pre-commit install
+    status:
+      - test -f .git/hooks/pre-commit
 
   clean:
     desc: Clean build artifacts
