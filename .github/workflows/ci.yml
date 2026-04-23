@@ -122,12 +122,13 @@ jobs:
       - name: Run tests
         run: go test -race -coverprofile=coverage.out ./...
 
-      - name: Upload coverage artifact
-        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+      - name: Upload coverage to Codecov
+        uses: codecov/codecov-action@18283e04ce6e62d37312384ff67231eb8fd56d24 # v5.4.3
         with:
-          name: coverage
-          path: coverage.out
-          retention-days: 7
+          files: coverage.out
+          flags: unit
+          codecov_yml_path: codecov.yml
+          use_oidc: true
 
   build:
     name: Build
