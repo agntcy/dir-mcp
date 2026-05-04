@@ -5,6 +5,8 @@ version: "3"
 
 vars:
   BIN_DIR: ./.bin
+  GOLANGCI_LINT_VERSION: "2.11.3"
+  GOLANGCI_LINT_BIN: "{{ .BIN_DIR }}/golangci-lint-{{ .GOLANGCI_LINT_VERSION }}"
   IMAGE_REPO: '{{ .IMAGE_REPO | default "ghcr.io/agntcy/dir-mcp" }}'
   IMAGE_TAG: '{{ .IMAGE_TAG | default "latest" }}'
 
@@ -49,8 +51,10 @@ tasks:
 
   lint:
     desc: Run linters
+    deps:
+      - deps:golangci-lint
     cmds:
-      - golangci-lint run ./...
+      - "{{ .GOLANGCI_LINT_BIN }} run ./..."
 
   license:
     desc: Run license check
@@ -69,6 +73,25 @@ tasks:
       - pre-commit install
     status:
       - test -f .git/hooks/pre-commit
+
+  deps:bin-dir:
+    internal: true
+    cmds:
+      - mkdir -p {{ .BIN_DIR }}
+    status:
+      - test -d {{ .BIN_DIR }}
+
+  deps:golangci-lint:
+    desc: Install golangci-lint
+    internal: true
+    deps:
+      - deps:bin-dir
+    cmds:
+      - curl -sSfL https://golangci-lint.run/install.sh | sh -s -- -b {{ .BIN_DIR }} v{{ .GOLANGCI_LINT_VERSION }}
+      - mv {{ .BIN_DIR }}/golangci-lint {{ .GOLANGCI_LINT_BIN }}
+      - chmod +x {{ .GOLANGCI_LINT_BIN }}
+    status:
+      - test -x {{ .GOLANGCI_LINT_BIN }}
 
   clean:
     desc: Clean build artifacts
