@@ -54,8 +54,7 @@ tasks:
     deps:
       - deps:golangci-lint
     vars:
-      LINT_BIN:
-        sh: realpath {{ .GOLANGCI_LINT_BIN }}
+      LINT_BIN: "{{ .ROOT_DIR }}/{{ .GOLANGCI_LINT_BIN }}"
     cmds:
       - "{{ .LINT_BIN }} run ./..."
       - cd tests/e2e && "{{ .LINT_BIN }}" run ./...
