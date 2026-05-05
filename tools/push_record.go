@@ -38,8 +38,9 @@ func (t *Tools) PushRecord(ctx context.Context, _ *mcp.CallToolRequest, input Pu
 		}, nil
 	}
 
-	// Validate the record before pushing
-	valid, validationErrors, err := record.Validate(ctx)
+	// Validate the record before pushing.
+	// The validator is injected via Tools (no global singleton); see Tools.Validator.
+	valid, validationErrors, err := record.ValidateWith(ctx, t.Validator)
 	if err != nil {
 		return nil, PushRecordOutput{
 			ErrorMessage: fmt.Sprintf("Failed to validate record: %v", err),

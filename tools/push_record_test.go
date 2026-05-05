@@ -13,7 +13,8 @@ import (
 )
 
 func TestPushRecord(t *testing.T) {
-	// Create Tools instance with nil client (tests only validate input parsing)
+	// Tools without a Client/Validator: tests below only exercise the JSON
+	// parsing path, which fails before validation or transport is reached.
 	tools := &Tools{Client: nil}
 
 	tests := []struct {
@@ -75,10 +76,18 @@ func TestPushRecord(t *testing.T) {
 }
 
 func TestPushRecord_InvalidRecord(t *testing.T) {
-	// Create Tools instance with nil client (tests only validate input parsing)
-	tools := &Tools{Client: nil}
+	// Inject a fake validator that reports the record as invalid so the
+	// PushRecord handler exercises its "Record validation failed" path
+	// without requiring a live OASF schema endpoint.
+	tools := &Tools{
+		Client: nil,
+		Validator: &fakeValidator{
+			valid:  false,
+			errors: []string{"missing required field 'version'"},
+		},
+	}
 
-	// Test with a record that will fail validation (missing required fields)
+	// Record that parses successfully but will be rejected by the validator.
 	invalidRecordJSON := `{
 		"schema_version": "0.7.0",
 		"name": "test-agent"
@@ -92,8 +101,6 @@ func TestPushRecord_InvalidRecord(t *testing.T) {
 	})
 
 	require.NoError(t, err) // PushRecord returns nil error, error in output
-	// result can be nil when there's an error - error info is in output.ErrorMessage
-	// Should have error message about validation failure
 	assert.NotEmpty(t, output.ErrorMessage)
 	assert.Contains(t, output.ErrorMessage, "validation")
 	assert.Empty(t, output.CID)

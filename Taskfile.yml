@@ -53,19 +53,17 @@ tasks:
     desc: Run linters
     deps:
       - deps:golangci-lint
+    vars:
+      LINT_BIN: "{{ .ROOT_DIR }}/{{ .GOLANGCI_LINT_BIN }}"
     cmds:
-      - "{{ .GOLANGCI_LINT_BIN }} run ./..."
+      - "{{ .LINT_BIN }} run ./..."
+      - cd tests/e2e && "{{ .LINT_BIN }}" run ./...
 
   license:
     desc: Run license check
     cmds:
       - licensei cache
       - licensei check
-
-  pre-commit:golangci-lint:
-    desc: Run golangci-lint pre-commit hook
-    cmds:
-      - golangci-lint run --fix {{.CLI_ARGS | default "./..."}}
 
   deps:
     desc: Install development dependencies and git hooks
