@@ -12,7 +12,7 @@ import (
 
 	"github.com/agntcy/dir-mcp/prompts"
 	"github.com/agntcy/dir-mcp/tools"
-	corev1 "github.com/agntcy/dir/api/core/v1"
+	"github.com/agntcy/oasf-sdk/pkg/validator"
 	"github.com/modelcontextprotocol/go-sdk/mcp"
 )
 
@@ -21,20 +21,23 @@ import (
 //
 //nolint:maintidx // Function registers all MCP tools and prompts, complexity is acceptable
 func Serve(ctx context.Context) error {
-	// Configure OASF validation
-	// Schema URL is required for OASF validation
+	// Configure OASF validation.
+	// Schema URL is required for OASF validation.
 	schemaURL := os.Getenv("OASF_API_VALIDATION_SCHEMA_URL")
 	if schemaURL == "" {
 		return errors.New("OASF_API_VALIDATION_SCHEMA_URL environment variable is required. Set it to the OASF schema URL (e.g., https://schema.oasf.outshift.com)")
 	}
 
-	// Initialize validator with schema URL
-	if err := corev1.InitializeValidator(schemaURL); err != nil {
+	// Construct the OASF validator once at process startup and inject it
+	// into Tools. Avoids package-level globals in github.com/agntcy/dir/api/core/v1
+	// (see github.com/agntcy/dir issue #856).
+	oasfValidator, err := validator.New(schemaURL)
+	if err != nil {
 		return fmt.Errorf("failed to initialize OASF validator: %w", err)
 	}
 
 	// Create Directory client tools (shared client for all tool calls)
-	t, err := tools.NewTools(ctx)
+	t, err := tools.NewTools(ctx, oasfValidator)
 	if err != nil {
 		return fmt.Errorf("failed to create Directory client: %w", err)
 	}

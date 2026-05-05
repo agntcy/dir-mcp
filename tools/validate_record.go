@@ -43,8 +43,8 @@ func (t *Tools) ValidateRecord(ctx context.Context, _ *mcp.CallToolRequest, inpu
 	// Get schema version
 	schemaVersion := record.GetSchemaVersion()
 
-	// Validate the record using OASF SDK
-	valid, validationErrors, err := record.Validate(ctx)
+	// Validate the record using the injected OASF validator (see Tools.Validator).
+	valid, validationErrors, err := record.ValidateWith(ctx, t.Validator)
 	if err != nil {
 		return nil, ValidateRecordOutput{
 			Valid:         false,

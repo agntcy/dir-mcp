@@ -446,7 +446,6 @@ var _ = ginkgo.Describe("MCP Server Protocol Tests", func() {
 			gomega.Expect(ok).To(gomega.BeTrue())
 			ginkgo.GinkgoWriter.Printf("Validation errors returned: %v\n", validationErrors)
 		})
-
 	})
 
 	ginkgo.Context("Schema Tools", func() {

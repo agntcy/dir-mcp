@@ -7,7 +7,6 @@ import (
 	"context"
 	"testing"
 
-	corev1 "github.com/agntcy/dir/api/core/v1"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -37,13 +36,8 @@ func TestServe_ValidationConfiguration(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			// Configure validation for unit tests: use a valid schema URL
-			// This ensures tests don't depend on external services or require schema URL configuration
-			if err := corev1.InitializeValidator("https://schema.oasf.outshift.com"); err != nil {
-				t.Fatalf("Failed to initialize validator: %v", err)
-			}
-
-			// Set test env vars
+			// Set test env vars. The validator is constructed inside Serve
+			// from this value, so no global initialization is required.
 			if tt.oasfSchemaURLEnv != "" {
 				t.Setenv("OASF_API_VALIDATION_SCHEMA_URL", tt.oasfSchemaURLEnv)
 			} else {
