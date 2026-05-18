@@ -3,7 +3,7 @@
 
 # syntax=docker/dockerfile:1
 
-FROM --platform=$BUILDPLATFORM golang:1.26.2-bookworm AS builder
+FROM --platform=$BUILDPLATFORM golang:1.26.3-bookworm AS builder
 
 ARG TARGETOS
 ARG TARGETARCH
