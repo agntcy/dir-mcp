@@ -7,7 +7,7 @@
   ],
   "configMigration": true,
   "enabled": true,
-  "minimumReleaseAge": "3 days",
+  "minimumReleaseAge": "7 days",
   "schedule": ["before 6am on Monday"],
   "enabledManagers": [
     "dockerfile",
