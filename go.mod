@@ -3,13 +3,13 @@ module github.com/agntcy/dir-mcp
 go 1.26.2
 
 // Cosign does not updated the crypto11 owner
-replace github.com/ThalesIgnite/crypto11 => github.com/ThalesGroup/crypto11 v1.6.0
+replace github.com/ThalesIgnite/crypto11 => github.com/ThalesGroup/crypto11 v1.6.1
 
 require (
 	github.com/agntcy/dir/api v1.3.0
 	github.com/agntcy/dir/client v1.3.0
 	github.com/agntcy/oasf-sdk/pkg v1.0.5
-	github.com/modelcontextprotocol/go-sdk v1.6.0
+	github.com/modelcontextprotocol/go-sdk v1.6.1
 	github.com/stretchr/testify v1.11.1
 	google.golang.org/protobuf v1.36.12-0.20260120151049-f2248ac996af
 )
