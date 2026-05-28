@@ -1,6 +1,6 @@
 module github.com/agntcy/dir-mcp/tests/e2e
 
-go 1.26.2
+go 1.26.3
 
 replace github.com/agntcy/dir-mcp => ../..
 
