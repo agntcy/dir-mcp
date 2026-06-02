@@ -5,7 +5,6 @@ package server
 
 import (
 	"context"
-	"errors"
 	"fmt"
 	"os"
 	"strings"
@@ -16,16 +15,22 @@ import (
 	"github.com/modelcontextprotocol/go-sdk/mcp"
 )
 
+// defaultOASFSchemaURL is used when OASF_API_VALIDATION_SCHEMA_URL is not set.
+// Users can override it by exporting OASF_API_VALIDATION_SCHEMA_URL before
+// starting the MCP server (e.g. to point at a self-hosted OASF schema server).
+const defaultOASFSchemaURL = "https://schema.oasf.outshift.com"
+
 // Serve creates and runs the MCP server with all configured tools and prompts.
 // It accepts a context and runs the server over stdin/stdout using the stdio transport.
 //
 //nolint:maintidx // Function registers all MCP tools and prompts, complexity is acceptable
 func Serve(ctx context.Context) error {
-	// Configure OASF validation.
-	// Schema URL is required for OASF validation.
+	// Resolve the OASF schema URL once: explicit env var wins, otherwise
+	// fall back to the default public OASF schema server. This URL is
+	// shared by the OASF validator and the schema-related MCP tools.
 	schemaURL := os.Getenv("OASF_API_VALIDATION_SCHEMA_URL")
 	if schemaURL == "" {
-		return errors.New("OASF_API_VALIDATION_SCHEMA_URL environment variable is required. Set it to the OASF schema URL (e.g., https://schema.oasf.outshift.com)")
+		schemaURL = defaultOASFSchemaURL
 	}
 
 	// Construct the OASF validator once at process startup and inject it
@@ -37,7 +42,7 @@ func Serve(ctx context.Context) error {
 	}
 
 	// Create Directory client tools (shared client for all tool calls)
-	t, err := tools.NewTools(ctx, oasfValidator)
+	t, err := tools.NewTools(ctx, oasfValidator, schemaURL)
 	if err != nil {
 		return fmt.Errorf("failed to create Directory client: %w", err)
 	}

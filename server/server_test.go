@@ -8,65 +8,48 @@ import (
 	"testing"
 
 	"github.com/stretchr/testify/assert"
-	"github.com/stretchr/testify/require"
 )
 
 func TestServe_ValidationConfiguration(t *testing.T) {
 	tests := []struct {
 		name             string
 		oasfSchemaURLEnv string
-		wantError        bool // If true, expects Serve to return an error (configuration error)
 	}{
 		{
-			name:             "error when schema URL is not set",
+			name:             "falls back to default schema URL when env is not set",
 			oasfSchemaURLEnv: "",
-			wantError:        true, // Should error because schema URL is required
 		},
 		{
 			name:             "use schema URL from OASF_API_VALIDATION_SCHEMA_URL env",
 			oasfSchemaURLEnv: "https://schema.oasf.outshift.com",
-			wantError:        false,
 		},
 		{
 			name:             "use custom schema URL",
 			oasfSchemaURLEnv: "https://custom.schema.url",
-			wantError:        false,
 		},
 	}
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			// Set test env vars. The validator is constructed inside Serve
-			// from this value, so no global initialization is required.
-			if tt.oasfSchemaURLEnv != "" {
-				t.Setenv("OASF_API_VALIDATION_SCHEMA_URL", tt.oasfSchemaURLEnv)
-			} else {
-				// Clear env var to test error behavior
-				t.Setenv("OASF_API_VALIDATION_SCHEMA_URL", "")
-			}
+			// The validator is constructed inside Serve from this value, so
+			// no global initialization is required.
+			t.Setenv("OASF_API_VALIDATION_SCHEMA_URL", tt.oasfSchemaURLEnv)
 
 			// Create a context that will be cancelled immediately to stop Serve early
 			ctx, cancel := context.WithCancel(context.Background())
 			cancel() // Cancel immediately so Serve returns quickly
 
-			// Call Serve - it will configure validation and then return due to cancelled context
+			// Call Serve - it will configure validation and then return due
+			// to cancelled context. Serve should not return a configuration
+			// error: an empty env var must fall back to the default URL.
 			err := Serve(ctx)
 
-			if tt.wantError {
-				// Verify that Serve returned a configuration error
-				require.Error(t, err, "Serve should return error when schema URL is missing")
-				assert.Contains(t, err.Error(), "OASF_API_VALIDATION_SCHEMA_URL", "Error should mention OASF_API_VALIDATION_SCHEMA_URL")
-			} else {
-				// Verify that validation was configured correctly
-				// We can't directly check the internal state, but we can verify
-				// that the configuration functions were called by checking if
-				// validation still works with the expected settings
-				assert.Error(t, err) // Should error due to cancelled context (not configuration error)
-
-				// Note: We can't easily verify the exact configuration without
-				// exposing internal state, but the fact that Serve runs without
-				// panicking and configures the validators is sufficient coverage
-			}
+			// We expect an error from the cancelled context rather than a
+			// configuration error. The previous behavior of erroring on an
+			// unset env var is no longer expected.
+			assert.Error(t, err)
+			assert.NotContains(t, err.Error(), "OASF_API_VALIDATION_SCHEMA_URL",
+				"Serve should no longer require OASF_API_VALIDATION_SCHEMA_URL")
 		})
 	}
 }

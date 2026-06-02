@@ -31,7 +31,7 @@ func (t *Tools) ListVersions(ctx context.Context, _ *mcp.CallToolRequest, _ List
 	error,
 ) {
 	// Get schema instance
-	schemaInstance, err := getSchemaInstance()
+	schemaInstance, err := t.getSchemaInstance()
 	if err != nil {
 		return nil, ListVersionsOutput{
 			ErrorMessage: fmt.Sprintf("Failed to initialize schema client: %v", err),
