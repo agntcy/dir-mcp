@@ -8,6 +8,7 @@ import (
 	"testing"
 
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
 func TestServe_ValidationConfiguration(t *testing.T) {
@@ -47,7 +48,7 @@ func TestServe_ValidationConfiguration(t *testing.T) {
 			// We expect an error from the cancelled context rather than a
 			// configuration error. The previous behavior of erroring on an
 			// unset env var is no longer expected.
-			assert.Error(t, err)
+			require.Error(t, err)
 			assert.NotContains(t, err.Error(), "OASF_API_VALIDATION_SCHEMA_URL",
 				"Serve should no longer require OASF_API_VALIDATION_SCHEMA_URL")
 		})
