@@ -44,8 +44,6 @@ tasks:
   test:e2e:
     desc: Run e2e tests
     dir: tests/e2e
-    env:
-      OASF_API_VALIDATION_SCHEMA_URL: '{{ .OASF_API_VALIDATION_SCHEMA_URL | default "https://schema.oasf.outshift.com" }}'
     cmds:
       - go test -v -timeout 5m ./...
 
