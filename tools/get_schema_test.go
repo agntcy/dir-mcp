@@ -12,10 +12,8 @@ import (
 )
 
 func TestGetSchema(t *testing.T) {
-	t.Setenv("OASF_API_VALIDATION_SCHEMA_URL", "https://schema.oasf.outshift.com")
-
 	// Create Tools instance (nil client is fine - GetSchema doesn't use client)
-	tools := &Tools{Client: nil}
+	tools := &Tools{Client: nil, SchemaURL: "https://schema.oasf.outshift.com"}
 
 	t.Run("should return schema for valid version", func(t *testing.T) {
 		ctx := context.Background()

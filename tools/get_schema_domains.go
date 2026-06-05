@@ -43,7 +43,7 @@ func (t *Tools) GetSchemaDomains(ctx context.Context, _ *mcp.CallToolRequest, in
 	GetSchemaDomainsOutput,
 	error,
 ) {
-	availableVersions, err := validateVersion(ctx, input.Version)
+	availableVersions, err := t.validateVersion(ctx, input.Version)
 	if err != nil {
 		//nolint:nilerr // MCP tools communicate errors through output, not error return
 		return nil, GetSchemaDomainsOutput{
@@ -53,7 +53,7 @@ func (t *Tools) GetSchemaDomains(ctx context.Context, _ *mcp.CallToolRequest, in
 	}
 
 	// Get schema instance
-	schemaInstance, err := getSchemaInstance()
+	schemaInstance, err := t.getSchemaInstance()
 	if err != nil {
 		//nolint:nilerr // MCP tools communicate errors through output, not error return
 		return nil, GetSchemaDomainsOutput{

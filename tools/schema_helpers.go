@@ -6,50 +6,42 @@ package tools
 import (
 	"context"
 	"fmt"
-	"os"
 	"slices"
 	"strings"
-	"sync"
 
 	"github.com/agntcy/oasf-sdk/pkg/schema"
 )
 
-var (
-	schemaInstance *schema.Schema
-	schemaMu       sync.Mutex
-	schemaURL      string
-)
+// getSchemaInstance returns a lazily-initialized Schema instance using the
+// SchemaURL configured on the Tools struct. The instance is created on first
+// use and cached for subsequent calls. The schema URL is resolved once at
+// server startup (see server.Serve) and remains immutable for the process
+// lifetime.
+func (t *Tools) getSchemaInstance() (*schema.Schema, error) {
+	t.schemaMu.Lock()
+	defer t.schemaMu.Unlock()
 
-// getSchemaInstance returns a Schema instance initialized from environment variable.
-// It checks the environment variable each time to support test scenarios.
-func getSchemaInstance() (*schema.Schema, error) {
-	schemaMu.Lock()
-	defer schemaMu.Unlock()
-
-	currentSchemaURL := os.Getenv("OASF_API_VALIDATION_SCHEMA_URL")
-	if currentSchemaURL == "" {
-		return nil, fmt.Errorf("OASF_API_VALIDATION_SCHEMA_URL environment variable is required. Set it to the OASF schema URL (e.g., https://schema.oasf.outshift.com)")
+	if t.SchemaURL == "" {
+		return nil, fmt.Errorf("schema URL is not configured")
 	}
 
-	// If schema URL changed or instance is nil, create a new instance
-	if schemaInstance == nil || schemaURL != currentSchemaURL {
-		var err error
-
-		schemaInstance, err = schema.New(currentSchemaURL, schema.WithCache(true))
-		if err != nil {
-			return nil, fmt.Errorf("failed to create schema instance: %w", err)
-		}
-
-		schemaURL = currentSchemaURL
+	if t.schemaInstance != nil {
+		return t.schemaInstance, nil
 	}
 
-	return schemaInstance, nil
+	inst, err := schema.New(t.SchemaURL, schema.WithCache(true))
+	if err != nil {
+		return nil, fmt.Errorf("failed to create schema instance: %w", err)
+	}
+
+	t.schemaInstance = inst
+
+	return t.schemaInstance, nil
 }
 
 // validateVersion checks if the provided version is valid and returns available versions.
-func validateVersion(ctx context.Context, version string) ([]string, error) {
-	// Get schema instance to fetch available versions
-	schemaInstance, err := getSchemaInstance()
+func (t *Tools) validateVersion(ctx context.Context, version string) ([]string, error) {
+	schemaInstance, err := t.getSchemaInstance()
 	if err != nil {
 		return nil, fmt.Errorf("failed to initialize schema client: %w", err)
 	}

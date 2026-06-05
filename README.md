@@ -393,11 +393,10 @@ If you prefer shorter-lived credentials, you can use OAuth tokens obtained via `
 #### OASF Validation Configuration
 
 - `OASF_API_VALIDATION_SCHEMA_URL` - OASF schema URL for validation and schema operations
-  - **Required** - The MCP server requires this environment variable to be set
+  - **Optional** - Defaults to `https://schema.oasf.outshift.com`
   - URL of the OASF schema server to use for validation and schema retrieval
-  - If not set, the server will fail to start with an error
-  - Example: `https://schema.oasf.outshift.com`
-  
+  - Override only when you need to point at a self-hosted or alternate OASF schema server
+
   This URL is used for:
   - Validating OASF agent records
   - Retrieving schema content, versions, skills, and domains
@@ -412,7 +411,6 @@ If you prefer shorter-lived credentials, you can use OAuth tokens obtained via `
       "command": "/absolute/path/to/dirctl",
       "args": ["mcp", "serve"],
       "env": {
-        "OASF_API_VALIDATION_SCHEMA_URL": "https://schema.oasf.outshift.com",
         "DIRECTORY_CLIENT_SERVER_ADDRESS": "localhost:8888"
       }
     }

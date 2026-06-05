@@ -6,9 +6,11 @@ package tools
 import (
 	"context"
 	"fmt"
+	"sync"
 
 	corev1 "github.com/agntcy/dir/api/core/v1"
 	"github.com/agntcy/dir/client"
+	"github.com/agntcy/oasf-sdk/pkg/schema"
 )
 
 // Tools provides Directory client-dependent tool implementations.
@@ -18,17 +20,26 @@ import (
 // (e.g. PushRecord, ValidateRecord). It is injected by the caller (the
 // MCP server entrypoint) so that no process-wide singleton is needed
 // and so that tests can supply fakes. See github.com/agntcy/dir issue #856.
+//
+// SchemaURL is the OASF schema API URL used by schema-related tools
+// (e.g. GetSchema, ListVersions). It is resolved once at server startup
+// from the OASF_API_VALIDATION_SCHEMA_URL environment variable (with a
+// default fallback) and remains immutable for the process lifetime.
 type Tools struct {
 	Client        *client.Client
 	ServerAddress string
 	Validator     corev1.Validator
+	SchemaURL     string
+
+	schemaMu       sync.Mutex
+	schemaInstance *schema.Schema
 }
 
-// NewTools creates a new Tools instance with a Directory client and the
-// provided OASF validator. The caller is responsible for calling Close()
+// NewTools creates a new Tools instance with a Directory client, OASF
+// validator, and schema URL. The caller is responsible for calling Close()
 // when done. The validator is owned by the caller; Close() does not
 // touch it.
-func NewTools(ctx context.Context, validator corev1.Validator) (*Tools, error) {
+func NewTools(ctx context.Context, validator corev1.Validator, schemaURL string) (*Tools, error) {
 	config, err := client.LoadConfig()
 	if err != nil {
 		return nil, fmt.Errorf("failed to load client configuration: %w", err)
@@ -43,6 +54,7 @@ func NewTools(ctx context.Context, validator corev1.Validator) (*Tools, error) {
 		Client:        c,
 		ServerAddress: config.ServerAddress,
 		Validator:     validator,
+		SchemaURL:     schemaURL,
 	}, nil
 }
 

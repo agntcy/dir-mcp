@@ -18,7 +18,7 @@ The MCP server runs via the `dirctl` CLI tool and acts as a bridge between AI de
 
 Add the MCP server to your IDE's MCP configuration using the absolute path to the `dirctl` binary.
 
-The server requires `OASF_API_VALIDATION_SCHEMA_URL` (see [Environment variables](#environment-variables)); without it the process exits on startup.
+The server uses `https://schema.oasf.outshift.com` as the default OASF schema server. Override it with `OASF_API_VALIDATION_SCHEMA_URL` (see [Environment variables](#environment-variables)) only when you need to target a self-hosted or alternate OASF schema server.
 
 **Example Cursor configuration (`~/.cursor/mcp.json`):**
 
@@ -27,10 +27,7 @@ The server requires `OASF_API_VALIDATION_SCHEMA_URL` (see [Environment variables
   "mcpServers": {
     "dir-mcp-server": {
       "command": "/absolute/path/to/dirctl",
-      "args": ["mcp", "serve"],
-      "env": {
-        "OASF_API_VALIDATION_SCHEMA_URL": "https://schema.oasf.outshift.com"
-      }
+      "args": ["mcp", "serve"]
     }
   }
 }
@@ -38,7 +35,7 @@ The server requires `OASF_API_VALIDATION_SCHEMA_URL` (see [Environment variables
 
 ### Docker Configuration
 
-Add the MCP server to your IDE's MCP configuration using Docker. Pass the same schema URL via `--env` (the container does not set a default).
+Add the MCP server to your IDE's MCP configuration using Docker.
 
 ??? example "Example Cursor configuration (`~/.cursor/mcp.json`)"
 
@@ -51,8 +48,6 @@ Add the MCP server to your IDE's MCP configuration using Docker. Pass the same s
             "run",
             "--rm",
             "-i",
-            "--env",
-            "OASF_API_VALIDATION_SCHEMA_URL=https://schema.oasf.outshift.com",
             "ghcr.io/agntcy/dir-ctl:latest",
             "mcp",
             "serve"
@@ -66,7 +61,7 @@ Add the MCP server to your IDE's MCP configuration using Docker. Pass the same s
 
 Configure the MCP server behavior using environment variables:
 
-- `OASF_API_VALIDATION_SCHEMA_URL` - Required. Base URL of the OASF schema API used to load schemas for validation (for example `https://schema.oasf.outshift.com`). The server will not start if this is unset.
+- `OASF_API_VALIDATION_SCHEMA_URL` - Optional. Base URL of the OASF schema API used to load schemas for validation. Defaults to `https://schema.oasf.outshift.com`. Override only when you need to point at a self-hosted or alternate OASF schema server.
 - `DIRECTORY_CLIENT_SERVER_ADDRESS` - Directory server address (default: `0.0.0.0:8888`)
 - `DIRECTORY_CLIENT_AUTH_MODE` - Authentication mode: `none`, `x509`, `jwt`, `token`
 - `DIRECTORY_CLIENT_SPIFFE_TOKEN` - Path to SPIFFE token file (for token authentication)

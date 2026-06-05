@@ -34,12 +34,12 @@ func (t *Tools) GetSchema(ctx context.Context, _ *mcp.CallToolRequest, input Get
 	error,
 ) {
 	// Get schema instance
-	schemaInstance, err := getSchemaInstance()
+	schemaInstance, err := t.getSchemaInstance()
 	if err != nil {
 		// Try to get available versions for error message
 		var availableVersions []string
 
-		if inst, getErr := getSchemaInstance(); getErr == nil {
+		if inst, getErr := t.getSchemaInstance(); getErr == nil {
 			if versions, getVersErr := inst.GetAvailableSchemaVersions(ctx); getVersErr == nil {
 				availableVersions = versions
 			}
