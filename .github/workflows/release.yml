@@ -95,16 +95,71 @@ jobs:
           cache-from: type=gha
           cache-to: type=gha,mode=max
 
-  release:
-    name: GitHub Release
-    needs: docker
+  mcpb:
+    name: MCPB Bundle
+    needs:
+      - test
+      - e2e
     runs-on: ubuntu-latest
     steps:
+      - name: Checkout code
+        uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4.3.1
+
+      - name: Setup Go
+        uses: actions/setup-go@40f1582b2485089dde7abd97c1529aa768e1baff # v5.6.0
+        with:
+          go-version-file: go.mod
+          cache: true
+
+      - name: Setup Node.js
+        uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
+        with:
+          node-version: "lts/*"
+
+      - name: Install mcpb CLI
+        run: npm install -g @anthropic-ai/mcpb
+
+      - name: Build cross-platform binaries
+        run: |
+          mkdir -p bundle/server
+          CGO_ENABLED=0 GOOS=linux   GOARCH=amd64 go build -o bundle/server/mcp-server             main.go
+          CGO_ENABLED=0 GOOS=darwin  GOARCH=arm64 go build -o bundle/server/mcp-server-darwin      main.go
+          CGO_ENABLED=0 GOOS=darwin  GOARCH=amd64 go build -o bundle/server/mcp-server-darwin-amd64 main.go
+          CGO_ENABLED=0 GOOS=windows GOARCH=amd64 go build -o bundle/server/mcp-server.exe         main.go
+
+      - name: Set version in manifest.json
+        run: |
+          VERSION=${GITHUB_REF#refs/tags/v}
+          jq --arg v "$VERSION" '.version = $v' manifest.json > bundle/manifest.json
+
+      - name: Pack MCPB bundle
+        run: mcpb pack bundle dir-mcp.mcpb
+
+      - name: Upload MCPB artifact
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: mcpb-bundle
+          path: dir-mcp.mcpb
+          retention-days: 1
+
+  release:
+    name: GitHub Release
+    needs:
+      - docker
+      - mcpb
+    runs-on: ubuntu-latest
+    steps:
+      - name: Download MCPB artifact
+        uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.0.1
+        with:
+          name: mcpb-bundle
+
       - name: Create Release
-        uses: softprops/action-gh-release@3bb12739c298aeb8a4eeaf626c5b8d85266b0e65 # v2.6.2
+        uses: softprops/action-gh-release@3d0d9888cb7fd7b750713d6e236d1fcb99157228 # v3.0.2
         with:
           draft: true
           generate_release_notes: true
+          files: dir-mcp.mcpb
 
   update-server-json:
     name: Update server.json
@@ -116,19 +171,25 @@ jobs:
         with:
           ref: main
 
-      - name: Update server.json version
+      - name: Update server.json and manifest.json versions
         run: |
           VERSION=${GITHUB_REF#refs/tags/v}
-          jq --arg v "$VERSION" '.version = $v | .packages[0].version = $v' server.json > server.tmp && mv server.tmp server.json
+          jq --arg v "$VERSION" \
+            '.version = $v | .packages[0].version = $v | .packages[1].version = $v | .packages[1].identifier = "https://github.com/agntcy/dir-mcp/releases/download/v\($v)/dir-mcp.mcpb"' \
+            server.json > server.tmp && mv server.tmp server.json
+          jq --arg v "$VERSION" '.version = $v' manifest.json > manifest.tmp && mv manifest.tmp manifest.json
 
       - name: Create pull request
         uses: peter-evans/create-pull-request@5f6978faf089d4d20b00c7766989d076bb2fc7f1 # v8.1.1
         with:
-          commit-message: "chore: update server.json version to ${{ github.ref_name }}"
+          commit-message: "chore: update server.json and manifest.json version to ${{ github.ref_name }}"
           branch: chore/server-json-${{ github.ref_name }}
-          title: "chore: update server.json version to ${{ github.ref_name }}"
+          title: "chore: update server.json and manifest.json version to ${{ github.ref_name }}"
           body: |
-            Automated update of `server.json` version following release ${{ github.ref_name }}.
+            Automated version bump following release ${{ github.ref_name }}.
+
+            - `server.json`: top-level version, docker package version, mcpb package version and identifier URL
+            - `manifest.json`: bundle version
 
             Required before publishing to the MCP Registry.
           labels: chore
