@@ -12,6 +12,7 @@ on:
 permissions:
   contents: write
   packages: write
+  pull-requests: write
   id-token: write
 
 jobs:
@@ -104,3 +105,31 @@ jobs:
         with:
           draft: true
           generate_release_notes: true
+
+  update-server-json:
+    name: Update server.json
+    needs: release
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout main
+        uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
+        with:
+          ref: main
+
+      - name: Update server.json version
+        run: |
+          VERSION=${GITHUB_REF#refs/tags/v}
+          jq --arg v "$VERSION" '.version = $v | .packages[0].version = $v' server.json > server.tmp && mv server.tmp server.json
+
+      - name: Create pull request
+        uses: peter-evans/create-pull-request@5f6978faf089d4d20b00c7766989d076bb2fc7f1 # v8.1.1
+        with:
+          commit-message: "chore: update server.json version to ${{ github.ref_name }}"
+          branch: chore/server-json-${{ github.ref_name }}
+          title: "chore: update server.json version to ${{ github.ref_name }}"
+          body: |
+            Automated update of `server.json` version following release ${{ github.ref_name }}.
+
+            Required before publishing to the MCP Registry.
+          labels: chore
+          signoff: true

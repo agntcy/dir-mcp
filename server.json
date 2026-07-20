@@ -1,0 +1,46 @@
+{
+    "$schema": "https://static.modelcontextprotocol.io/schemas/2025-12-11/server.schema.json",
+    "name": "io.github.agntcy/dir-mcp",
+    "description": "MCP server for working with OASF agent records in the Agntcy Directory.",
+    "repository": {
+        "url": "https://github.com/agntcy/dir-mcp",
+        "source": "github"
+    },
+    "version": "1.3.3",
+    "packages": [
+        {
+            "registryType": "docker",
+            "identifier": "ghcr.io/agntcy/dir-mcp",
+            "version": "1.3.3",
+            "transport": {
+                "type": "stdio"
+            },
+            "environmentVariables": [
+                {
+                    "name": "OASF_API_VALIDATION_SCHEMA_URL",
+                    "description": "OASF schema server URL (e.g. https://schema.oasf.outshift.com)",
+                    "isRequired": true,
+                    "isSecret": false
+                },
+                {
+                    "name": "DIRECTORY_CLIENT_SERVER_ADDRESS",
+                    "description": "Directory server address (default: 0.0.0.0:8888)",
+                    "isRequired": false,
+                    "isSecret": false
+                },
+                {
+                    "name": "DIRECTORY_CLIENT_AUTH_MODE",
+                    "description": "Auth mode: none, github, x509, jwt, token",
+                    "isRequired": false,
+                    "isSecret": false
+                },
+                {
+                    "name": "DIRECTORY_CLIENT_AUTH_TOKEN",
+                    "description": "Pre-issued bearer token for CI/scripts (skips interactive login)",
+                    "isRequired": false,
+                    "isSecret": true
+                }
+            ]
+        }
+    ]
+}
