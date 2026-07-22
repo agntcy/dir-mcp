@@ -1,74 +1,83 @@
 {
-    "manifest_version": "0.3",
-    "name": "dir-mcp",
-    "display_name": "Agntcy Directory MCP Server",
-    "version": "1.3.3",
-    "description": "MCP server for working with OASF agent records in the Agntcy Directory.",
-    "long_description": "An MCP server that exposes tools for searching, validating, pushing, and pulling OASF agent records from the Agntcy Directory. Requires a running Directory server.",
-    "author": {
-        "name": "AGNTCY Contributors",
-        "url": "https://github.com/agntcy"
-    },
-    "repository": {
-        "type": "git",
-        "url": "https://github.com/agntcy/dir-mcp.git"
-    },
-    "homepage": "https://github.com/agntcy/dir-mcp",
-    "documentation": "https://github.com/agntcy/dir-mcp/blob/main/README.md",
-    "support": "https://github.com/agntcy/dir-mcp/issues",
-    "license": "Apache-2.0",
-    "keywords": ["agntcy", "directory", "oasf", "mcp"],
-    "server": {
-        "type": "binary",
-        "entry_point": "server/mcp-server",
-        "mcp_config": {
-            "command": "${__dirname}/server/mcp-server",
-            "args": [],
-            "env": {
-                "OASF_API_VALIDATION_SCHEMA_URL": "${user_config.oasf_schema_url}",
-                "DIRECTORY_CLIENT_SERVER_ADDRESS": "${user_config.server_address}",
-                "DIRECTORY_CLIENT_AUTH_MODE": "${user_config.auth_mode}",
-                "DIRECTORY_CLIENT_AUTH_TOKEN": "${user_config.auth_token}"
-            },
-            "platform_overrides": {
-                "darwin": {
-                    "command": "${__dirname}/server/mcp-server-darwin"
-                },
-                "win32": {
-                    "command": "${__dirname}/server/mcp-server.exe"
-                }
-            }
+  "manifest_version": "0.3",
+  "name": "dir-mcp",
+  "display_name": "Agntcy Directory MCP Server",
+  "version": "1.3.3-mcp.1",
+  "description": "MCP server for working with OASF agent records in the Agntcy Directory.",
+  "long_description": "An MCP server that exposes tools for searching, validating, pushing, and pulling OASF agent records from the Agntcy Directory. Requires a running Directory server.",
+  "author": {
+    "name": "AGNTCY Contributors",
+    "url": "https://github.com/agntcy"
+  },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/agntcy/dir-mcp.git"
+  },
+  "homepage": "https://github.com/agntcy/dir-mcp",
+  "documentation": "https://github.com/agntcy/dir-mcp/blob/main/README.md",
+  "support": "https://github.com/agntcy/dir-mcp/issues",
+  "license": "Apache-2.0",
+  "keywords": [
+    "agntcy",
+    "directory",
+    "oasf",
+    "mcp"
+  ],
+  "server": {
+    "type": "binary",
+    "entry_point": "server/mcp-server",
+    "mcp_config": {
+      "command": "${__dirname}/server/mcp-server",
+      "args": [],
+      "env": {
+        "OASF_API_VALIDATION_SCHEMA_URL": "${user_config.oasf_schema_url}",
+        "DIRECTORY_CLIENT_SERVER_ADDRESS": "${user_config.server_address}",
+        "DIRECTORY_CLIENT_AUTH_MODE": "${user_config.auth_mode}",
+        "DIRECTORY_CLIENT_AUTH_TOKEN": "${user_config.auth_token}"
+      },
+      "platform_overrides": {
+        "darwin": {
+          "command": "${__dirname}/server/mcp-server-darwin"
+        },
+        "win32": {
+          "command": "${__dirname}/server/mcp-server.exe"
         }
-    },
-    "compatibility": {
-        "platforms": ["darwin", "win32", "linux"]
-    },
-    "tools_generated": true,
-    "user_config": {
-        "oasf_schema_url": {
-            "type": "string",
-            "title": "OASF Schema URL",
-            "description": "OASF schema server URL (e.g. https://schema.oasf.outshift.com)",
-            "required": true
-        },
-        "server_address": {
-            "type": "string",
-            "title": "Directory Server Address",
-            "description": "Directory server address (e.g. 0.0.0.0:8888)",
-            "required": false
-        },
-        "auth_mode": {
-            "type": "string",
-            "title": "Auth Mode",
-            "description": "Auth mode: none, github, x509, jwt, token",
-            "required": false
-        },
-        "auth_token": {
-            "type": "string",
-            "title": "Auth Token",
-            "description": "Pre-issued bearer token for CI/scripts (skips interactive login)",
-            "sensitive": true,
-            "required": false
-        }
+      }
     }
+  },
+  "compatibility": {
+    "platforms": [
+      "darwin",
+      "win32",
+      "linux"
+    ]
+  },
+  "tools_generated": true,
+  "user_config": {
+    "oasf_schema_url": {
+      "type": "string",
+      "title": "OASF Schema URL",
+      "description": "OASF schema server URL (e.g. https://schema.oasf.outshift.com)",
+      "required": true
+    },
+    "server_address": {
+      "type": "string",
+      "title": "Directory Server Address",
+      "description": "Directory server address (e.g. 0.0.0.0:8888)",
+      "required": false
+    },
+    "auth_mode": {
+      "type": "string",
+      "title": "Auth Mode",
+      "description": "Auth mode: none, github, x509, jwt, token",
+      "required": false
+    },
+    "auth_token": {
+      "type": "string",
+      "title": "Auth Token",
+      "description": "Pre-issued bearer token for CI/scripts (skips interactive login)",
+      "sensitive": true,
+      "required": false
+    }
+  }
 }
