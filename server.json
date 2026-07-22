@@ -9,9 +9,8 @@
   "version": "1.3.3-mcp.1",
   "packages": [
     {
-      "registryType": "docker",
-      "identifier": "ghcr.io/agntcy/dir-mcp",
-      "version": "1.3.3-mcp.1",
+      "registryType": "oci",
+      "identifier": "ghcr.io/agntcy/dir-mcp:1.3.3-mcp.1",
       "transport": {
         "type": "stdio"
       },
