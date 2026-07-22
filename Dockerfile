@@ -25,5 +25,7 @@ FROM gcr.io/distroless/static:nonroot
 WORKDIR /
 COPY --from=builder /bin/mcp-server ./mcp-server
 
+LABEL io.modelcontextprotocol.server.name="io.github.agntcy/dir-mcp"
+
 USER 65532:65532
 ENTRYPOINT ["./mcp-server"]
