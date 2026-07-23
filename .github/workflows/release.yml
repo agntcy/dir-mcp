@@ -52,7 +52,7 @@ jobs:
             echo "✅ manifest.json: $MANIFEST_VERSION"
           fi
 
-          if [[ $FAILED -eq "true" ]]; then
+          if [ $FAILED == "true" ]; then
               exit 1;
           fi
 
