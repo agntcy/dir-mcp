@@ -2,7 +2,7 @@
   "manifest_version": "0.3",
   "name": "dir-mcp",
   "display_name": "Agntcy Directory MCP Server",
-  "version": "1.3.3-mcp.2",
+  "version": "1.3.3-mcp.3",
   "description": "MCP server for working with OASF agent records in the Agntcy Directory.",
   "long_description": "An MCP server that exposes tools for searching, validating, pushing, and pulling OASF agent records from the Agntcy Directory. Requires a running Directory server.",
   "author": {
