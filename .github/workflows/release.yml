@@ -52,7 +52,9 @@ jobs:
             echo "✅ manifest.json: $MANIFEST_VERSION"
           fi
 
-          [ "$FAILED" = "true" ] && exit 1
+          if [[ $FAILED -eq "true" ]]; then
+              exit 1;
+          fi
 
   test:
     name: Unit Test
