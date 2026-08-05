@@ -3,7 +3,7 @@ module github.com/agntcy/dir-mcp
 go 1.26.5
 
 // Cosign does not updated the crypto11 owner
-replace github.com/ThalesIgnite/crypto11 => github.com/ThalesGroup/crypto11 v1.6.1
+replace github.com/ThalesIgnite/crypto11 => github.com/ThalesGroup/crypto11 v1.6.7
 
 require (
 	github.com/agntcy/dir/api v1.6.2
