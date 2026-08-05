@@ -1,0 +1,14 @@
+{
+  "mcpServers": {
+    "agntcy-dir": {
+      "command": "npx",
+      "args": ["-y", "@agntcy/dir-mcp"],
+      "env": {
+        "OASF_API_VALIDATION_SCHEMA_URL": "${OASF_API_VALIDATION_SCHEMA_URL:-https://schema.oasf.outshift.com}",
+        "DIRECTORY_CLIENT_SERVER_ADDRESS": "${DIRECTORY_CLIENT_SERVER_ADDRESS:-0.0.0.0:8888}",
+        "DIRECTORY_CLIENT_AUTH_MODE": "${DIRECTORY_CLIENT_AUTH_MODE:-none}",
+        "DIRECTORY_CLIENT_AUTH_TOKEN": "${DIRECTORY_CLIENT_AUTH_TOKEN:-}"
+      }
+    }
+  }
+}

@@ -1,0 +1,19 @@
+---
+description: Guide for authenticating with the AGNTCY Directory instance via dirctl — using the bundled binary or DIRECTORY_DIRCTL_PATH, never PATH scanning
+---
+
+# dirctl Authentication
+
+When the user asks to log in to the Directory, authenticate with dirctl, get a token, run `dirctl auth login`, or fix auth errors from the MCP tools, follow the `dirctl-auth` skill.
+
+## Binary lookup
+
+Never run `which dirctl` or scan PATH. The binary must come from `DIRECTORY_DIRCTL_PATH` in the config or the bundled binary set by the npm wrapper. If neither is available, instruct the user to set `DIRECTORY_DIRCTL_PATH` in the config.
+
+## When to trigger
+
+- "log in to the Directory"
+- "authenticate with dirctl"
+- "dirctl auth login"
+- "get a token" / "refresh my token"
+- MCP tools return auth or permission errors and the auth mode is `oidc`
