@@ -89,49 +89,7 @@ tasks:
     status:
       - test -x {{ .GOLANGCI_LINT_BIN }}
 
-  mcpb:pack:
-    desc: "Update version refs in server.json and manifest.json, build mcpb bundle locally, and inject fileSha256 (usage: task mcpb:pack VERSION=1.3.4)"
-    vars:
-      VERSION: '{{ .VERSION | default "" }}'
-      MCPB_URL: "https://github.com/agntcy/dir-mcp/releases/download/v{{.VERSION}}/dir-mcp.mcpb"
-    preconditions:
-      - sh: '[ -n "{{.VERSION}}" ]'
-        msg: "VERSION is required, e.g.: task mcpb:pack VERSION=1.3.4"
-      - sh: "command -v mcpb"
-        msg: "mcpb CLI not found — install with: npm install -g @anthropic-ai/mcpb"
-    cmds:
-      # Update manifest.json version
-      - jq --arg v "{{.VERSION}}" '.version = $v' manifest.json > manifest.json.tmp && mv manifest.json.tmp manifest.json
-      # Update server.json: top-level version, OCI identifier tag, mcpb identifier URL, mcpb version
-      - |
-        jq \
-          --arg v "{{.VERSION}}" \
-          --arg mcpb_url "{{.MCPB_URL}}" \
-          '
-            .version = $v |
-            (.packages[] | select(.registryType == "oci")).identifier = "ghcr.io/agntcy/dir-mcp:\($v)" |
-            (.packages[] | select(.registryType == "mcpb")).identifier = $mcpb_url |
-            (.packages[] | select(.registryType == "mcpb")).version = $v
-          ' server.json > server.json.tmp && mv server.json.tmp server.json
-      # Build cross-platform binaries
-      - mkdir -p bundle/server
-      - CGO_ENABLED=0 GOOS=linux   GOARCH=amd64 go build -o bundle/server/mcp-server              main.go
-      - CGO_ENABLED=0 GOOS=darwin  GOARCH=arm64 go build -o bundle/server/mcp-server-darwin       main.go
-      - CGO_ENABLED=0 GOOS=darwin  GOARCH=amd64 go build -o bundle/server/mcp-server-darwin-amd64 main.go
-      - CGO_ENABLED=0 GOOS=windows GOARCH=amd64 go build -o bundle/server/mcp-server.exe          main.go
-      - cp manifest.json bundle/manifest.json
-      # Pack the mcpb bundle
-      - mcpb pack bundle dir-mcp.mcpb
-      # Compute SHA256 and inject into server.json
-      - |
-        SHA256=$(sha256sum dir-mcp.mcpb 2>/dev/null | awk '{print $1}' || shasum -a 256 dir-mcp.mcpb | awk '{print $1}')
-        jq --arg sha "$SHA256" '(.packages[] | select(.registryType == "mcpb")).fileSha256 = $sha' server.json > server.json.tmp
-        mv server.json.tmp server.json
-      # Clean up build directory
-      - rm -rf bundle dir-mcp.mcpb
-
   clean:
     desc: Clean build artifacts
     cmds:
       - rm -rf {{ .BIN_DIR }}
-      - rm -f dir-mcp.mcpb
