@@ -1,8 +1,10 @@
 {
   "mcpServers": {
     "agntcy-dir": {
-      "command": "npx",
-      "args": ["-y", "@agntcy/dir-mcp"],
+      "command": "node",
+      "args": [
+        "/Users/acsepi/Projects/agntcy/dir-mcp/dir-mcp-plugins/npm/bin/dir-mcp.js"
+      ],
       "env": {
         "DIR_MCP_CONFIG": "~/.config/dir-mcp/config.json",
         "DIR_MCP_DEBUG": "1"

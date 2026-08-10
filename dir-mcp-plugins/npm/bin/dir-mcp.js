@@ -67,12 +67,14 @@ function resolveEnv(fatal) {
   env.DIRECTORY_MCP_PATH = binaryPath;
 
   // Resolve DIRECTORY_DIRCTL_PATH via shared helper (config/env wins, then bundled).
+  // Also expose DIRCTL as a convenience alias so skills and rules can use $DIRCTL directly.
   const dirctlPath = resolveDirctlPath(env, __dirname);
   if (dirctlPath) {
     env.DIRECTORY_DIRCTL_PATH = dirctlPath;
+    env.DIRCTL = dirctlPath;
     debug(`resolved dirctl: ${dirctlPath}`);
   } else {
-    debug(`bundled dirctl not found — DIRECTORY_DIRCTL_PATH not set`);
+    debug(`bundled dirctl not found — DIRECTORY_DIRCTL_PATH and DIRCTL not set`);
   }
 
   return { env, binaryPath };
@@ -81,6 +83,59 @@ function resolveEnv(fatal) {
 let child = null;
 let restarting = false;
 let isConfigReloadChild = false;
+
+// MCP initialization replay — when the server binary restarts (OIDC login,
+// config reload) the MCP client (Cursor) has already completed the
+// initialize/initialized handshake and will not re-send it.  We intercept
+// stdin to save those two messages and replay them to every new child so
+// the binary transitions to its ready state before tool calls arrive.
+// The replayed initialize response is suppressed so Cursor never sees a
+// duplicate.
+let savedInitRequest = null;      // raw JSON line of the "initialize" request
+let savedInitRequestId = null;    // id field of that request, for suppression
+let savedInitNotification = null; // raw JSON line of "notifications/initialized"
+let suppressInitResponse = false; // drop the next initialize response from child
+
+function writeToChild(line) {
+  if (child && child.stdin && child.exitCode === null) {
+    try { child.stdin.write(line + "\n"); } catch {}
+  }
+}
+
+function setupStdin() {
+  let buf = "";
+  process.stdin.on("data", (chunk) => {
+    buf += chunk.toString();
+    const lines = buf.split("\n");
+    buf = lines.pop();
+    for (const line of lines) {
+      if (!line.trim()) continue;
+      try {
+        const msg = JSON.parse(line);
+        if (msg.method === "initialize" && "id" in msg) {
+          savedInitRequest = line;
+          savedInitRequestId = msg.id;
+        } else if (msg.method === "notifications/initialized") {
+          savedInitNotification = line;
+        }
+      } catch {}
+      writeToChild(line);
+    }
+  });
+  process.stdin.on("end", () => {
+    if (child && child.stdin) child.stdin.end();
+  });
+}
+
+function replayInitToChild(stdin) {
+  if (savedInitRequest) {
+    stdin.write(savedInitRequest + "\n");
+    suppressInitResponse = true;
+  }
+  if (savedInitNotification) {
+    stdin.write(savedInitNotification + "\n");
+  }
+}
 
 // Runs `dirctl auth login`, forwarding its output to stderr, and resolves when
 // it exits successfully. Rejects on non-zero exit or spawn error.
@@ -130,9 +185,15 @@ function spawnChild(env, binaryPath, fromConfigReload = false) {
   isConfigReloadChild = fromConfigReload;
   debug(`spawning binary with args: ${JSON.stringify(process.argv.slice(2))}`);
   child = spawn(binaryPath, process.argv.slice(2), {
-    stdio: ["inherit", "pipe", "pipe"],
+    stdio: ["pipe", "pipe", "pipe"],
     env,
   });
+
+  // Replay the MCP initialize/initialized handshake so the new binary reaches
+  // its ready state before the MCP client sends tool calls.
+  if (savedInitRequest) {
+    replayInitToChild(child.stdin);
+  }
 
   // stdout is the MCP JSON-RPC channel. Buffer line by line: forward JSON lines
   // to stdout, redirect anything else (e.g. stray Go log output) to stderr so
@@ -147,6 +208,18 @@ function spawnChild(env, binaryPath, fromConfigReload = false) {
     for (const line of lines) {
       if (DEBUG) process.stderr.write(`[dir-mcp-server stdout] ${line}\n`);
       if (line.trimStart().startsWith("{")) {
+        // Suppress the initialize response replayed to the restarted child —
+        // Cursor already received this response from the first run.
+        if (suppressInitResponse) {
+          try {
+            const msg = JSON.parse(line);
+            if ("id" in msg && msg.id === savedInitRequestId && !("method" in msg)) {
+              suppressInitResponse = false;
+              debug(`suppressed replayed initialize response (id=${savedInitRequestId})`);
+              continue;
+            }
+          } catch {}
+        }
         process.stdout.write(line + "\n");
       } else if (line) {
         if (line.includes("no OIDC access token")) needsOidcLogin = true;
@@ -236,6 +309,8 @@ function start() {
   fs.mkdirSync(path.dirname(configPath), { recursive: true });
 
   loadConfig(log);
+
+  setupStdin();
 
   const initial = resolveEnv(true);
   spawnChild(initial.env, initial.binaryPath);

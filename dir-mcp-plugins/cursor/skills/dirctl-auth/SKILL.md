@@ -14,22 +14,22 @@ Use this skill to log in to the AGNTCY Directory instance that dir-mcp is config
 1. **Config file** — `DIRECTORY_DIRCTL_PATH` in `~/.config/dir-mcp/config.json` (or `$DIR_MCP_CONFIG`)
 2. **Bundled binary** — `DIRECTORY_DIRCTL_PATH` injected by the npm wrapper at startup (set automatically to the binary downloaded alongside the MCP server)
 
-Read the resolved value from the environment or config:
+Set the `DIRCTL` variable to the resolved path. The npm wrapper sets it automatically; the fallback reads the config file if it was not injected:
 
 ```sh
-echo "${DIRECTORY_DIRCTL_PATH:-$(cat "${DIR_MCP_CONFIG:-$HOME/.config/dir-mcp/config.json}" | python3 -c "import sys,json; print(json.load(sys.stdin).get('DIRECTORY_DIRCTL_PATH',''))" 2>/dev/null)}"
+DIRCTL="${DIRCTL:-${DIRECTORY_DIRCTL_PATH:-$(python3 -c "import sys,json; print(json.load(open('${DIR_MCP_CONFIG:-$HOME/.config/dir-mcp/config.json}')).get('DIRECTORY_DIRCTL_PATH',''))" 2>/dev/null)}}"
 ```
 
-If the value is empty or the file at that path does not exist, stop and ask the user:
+If `$DIRCTL` is empty or the file at that path does not exist, stop and ask the user:
 
 > `DIRECTORY_DIRCTL_PATH` is not set or points to a missing file. Set it in `~/.config/dir-mcp/config.json` to the bundled binary path (printed by the npm wrapper at startup with `DIR_MCP_DEBUG=1`) or to a manually installed `dirctl` binary. Do not add `dirctl` to PATH — use the config key instead.
 
-Use the resolved path in all subsequent commands by substituting it for `dirctl`.
+Use `$DIRCTL` in place of `dirctl` in all subsequent commands.
 
 If `DIRECTORY_DIRCTL_VERSION` is set in the config, verify the installed binary matches:
 
 ```sh
-<dirctl> version
+"$DIRCTL" version
 ```
 
 If the version does not match `DIRECTORY_DIRCTL_VERSION`, warn the user:
@@ -61,7 +61,7 @@ If the config file does not exist, show the user the OIDC template from the `con
 Pass the issuer and client ID from the config explicitly so the login targets the correct Directory:
 
 ```sh
-dirctl auth login \
+"$DIRCTL" auth login \
   --oidc-issuer "$DIRECTORY_CLIENT_OIDC_ISSUER" \
   --oidc-client-id "$DIRECTORY_CLIENT_OIDC_CLIENT_ID"
 ```
@@ -69,7 +69,7 @@ dirctl auth login \
 If the config does not have separate issuer/client-id fields (older configs may rely on dirctl's own defaults), run without flags:
 
 ```sh
-dirctl auth login
+"$DIRCTL" auth login
 ```
 
 The command opens a browser window. Tell the user to complete the login there. Once complete, the token is cached at `~/.config/dirctl/tokens/`.
@@ -85,7 +85,7 @@ ls ~/.config/dirctl/tokens/
 A non-empty listing means the token was stored. Then verify the token is accepted by the server:
 
 ```sh
-dirctl auth status
+"$DIRCTL" auth status
 ```
 
 A successful output (exit 0) confirms authentication is active.
