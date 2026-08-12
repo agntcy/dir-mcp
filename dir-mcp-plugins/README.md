@@ -24,9 +24,11 @@ Cursor plugin for the [AGNTCY Agent Directory](https://github.com/agntcy/dir-mcp
 **Skills:**
 - `create-oasf-record` — Generate, validate, and publish a record for any codebase
 - `search-agents` — Discover agents and verify their authenticity
+- `configure-dir-mcp` — View and update the dir-mcp config JSON through chat (server address, auth mode, tokens, TLS, OIDC)
 
 **Rules:**
 - `oasf-records` — Best practices applied automatically when working with OASF records
+- `dir-mcp-config` — Guides configuration of the dir-mcp runtime settings when asked
 
 ## Prerequisites
 
@@ -35,34 +37,20 @@ Cursor plugin for the [AGNTCY Agent Directory](https://github.com/agntcy/dir-mcp
 
 > If you only need OASF schema tools (validate, import, export, get_schema), no Directory server is required — only the `OASF_API_VALIDATION_SCHEMA_URL` env var is needed.
 
-## Configuration
-
-Set these environment variables before starting Cursor:
-
-```sh
-# Required — OASF schema server (public instance shown below)
-export OASF_API_VALIDATION_SCHEMA_URL=https://schema.oasf.outshift.com
-
-# Required for Directory tools — address of your Directory server
-export DIRECTORY_CLIENT_SERVER_ADDRESS=0.0.0.0:8888
-
-# Optional — auth mode: none, github, x509, jwt, token
-export DIRECTORY_CLIENT_AUTH_MODE=none
-
-# Optional — pre-issued bearer token (for CI / scripted workflows)
-export DIRECTORY_CLIENT_AUTH_TOKEN=<your-token>
-```
-
 ## Setup
 
 Copy `mcp.json` to `~/.cursor/mcp.json` (global) or `.cursor/mcp.json` (per-project).
 
 On first run `npx` downloads the `@agntcy/dir-mcp` package, which fetches the platform-specific binary and caches it in the npm cache. Subsequent starts reuse the cached binary.
 
+## Configuration
+
+Use the `configure-dir-mcp` skill to set up the server through chat. It walks you through the config file at `~/.config/dir-mcp/config.json` with ready-to-paste templates for common setups: local/no-auth, remote with bearer token, OIDC, and mutual TLS.
+
 ## Quick start
 
 1. Install the plugin from the Cursor Marketplace.
-2. Set the environment variables above.
+2. Ask Cursor to configure dir-mcp — the `configure-dir-mcp` skill guides you through it.
 3. Open a project and use `/create_record` to register it in the Directory.
 
 ## License
