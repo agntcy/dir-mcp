@@ -5,7 +5,7 @@
   "license": "Apache-2.0",
   "repository": {
     "type": "git",
-    "url": "https://github.com/agntcy/dir-mcp.git",
+    "url": "git+https://github.com/agntcy/dir-mcp.git",
     "directory": "dir-mcp-plugins/npm"
   },
   "homepage": "https://github.com/agntcy/dir-mcp",
@@ -20,8 +20,8 @@
     "mcp-server"
   ],
   "bin": {
-    "dir-mcp": "./bin/dir-mcp.js",
-    "dirctl": "./bin/dirctl.js"
+    "dir-mcp": "bin/dir-mcp.js",
+    "dirctl": "bin/dirctl.js"
   },
   "files": [
     "bin/"
