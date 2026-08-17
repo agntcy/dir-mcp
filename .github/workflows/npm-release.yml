@@ -1,0 +1,116 @@
+# Copyright AGNTCY Contributors (https://github.com/agntcy)
+# SPDX-License-Identifier: Apache-2.0
+
+---
+name: npm Release
+
+on:
+  workflow_run:
+    workflows: ["Release"]
+    types: [completed]
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: "Git tag to publish (e.g. v1.3.5)"
+        required: true
+      dirctl_tag:
+        description: "dirctl release tag to bundle (e.g. v1.6.2); defaults to latest"
+        required: false
+        default: ""
+
+env:
+  DIRCTL_REPO: agntcy/dir
+
+permissions:
+  contents: read
+  id-token: write
+
+jobs:
+  publish-npm:
+    name: Publish to npm
+    # For workflow_run: only run when the Release workflow succeeded on a version tag.
+    # For workflow_dispatch: always run.
+    if: >-
+      (github.event_name == 'workflow_run' &&
+       github.event.workflow_run.conclusion == 'success' &&
+       startsWith(github.event.workflow_run.head_branch, 'v')) ||
+      github.event_name == 'workflow_dispatch'
+    runs-on: ubuntu-latest
+    steps:
+      - name: Resolve release tag
+        id: ctx
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          if [[ "$GITHUB_EVENT_NAME" == "workflow_dispatch" ]]; then
+            TAG="${{ inputs.tag }}"
+          else
+            TAG=$(gh api "repos/${{ github.repository }}/git/refs/tags" \
+              --jq '.[] | select(.object.sha == "${{ github.event.workflow_run.head_sha }}") | .ref' \
+              | sed 's|refs/tags/||' | head -1)
+            if [[ -z "$TAG" ]]; then
+              echo "Error: could not resolve a tag for commit ${{ github.event.workflow_run.head_sha }}"
+              exit 1
+            fi
+          fi
+          echo "tag=$TAG" >> "$GITHUB_OUTPUT"
+          echo "version=${TAG#v}" >> "$GITHUB_OUTPUT"
+          echo "dirctl_tag=${{ inputs.dirctl_tag }}" >> "$GITHUB_OUTPUT"
+
+      - name: Checkout code
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: ${{ steps.ctx.outputs.tag }}
+
+      - name: Setup Node.js
+        uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
+        with:
+          node-version: "24.x"
+          registry-url: "https://registry.npmjs.org"
+          scope: "@agntcy"
+
+      - name: Run tests
+        run: npm test
+        working-directory: dir-mcp-plugins/npm
+
+      - name: Download mcp-server binaries from GitHub Release
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          TAG="${{ steps.ctx.outputs.tag }}"
+          echo "Downloading mcp-server binaries from release $TAG"
+          gh release download "$TAG" \
+            --pattern "mcp-server-*" \
+            --dir dir-mcp-plugins/npm/bin/
+
+      - name: Download dirctl binaries
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          DIRCTL_TAG="${{ steps.ctx.outputs.dirctl_tag }}"
+          if [[ -z "$DIRCTL_TAG" ]]; then
+            DIRCTL_TAG=$(gh release list -R "$DIRCTL_REPO" --limit 1 --json tagName --jq '.[0].tagName')
+          fi
+          echo "Downloading dirctl $DIRCTL_TAG from $DIRCTL_REPO"
+          for PLATFORM in linux-amd64 linux-arm64 darwin-amd64 darwin-arm64 windows-amd64; do
+            gh release download "$DIRCTL_TAG" \
+              -R "$DIRCTL_REPO" \
+              -p "dirctl-${PLATFORM}" \
+              -D dir-mcp-plugins/npm/bin/ \
+            && echo "Downloaded dirctl-${PLATFORM}" \
+            || echo "Warning: dirctl-${PLATFORM} not found in $DIRCTL_TAG, skipping"
+          done
+
+      - name: Make binaries executable
+        run: |
+          chmod +x dir-mcp-plugins/npm/bin/mcp-server-* \
+                   dir-mcp-plugins/npm/bin/dirctl-* \
+            2>/dev/null || true
+
+      - name: Set npm version
+        run: npm version "${{ steps.ctx.outputs.version }}" --no-git-tag-version
+        working-directory: dir-mcp-plugins/npm
+
+      - name: Publish to npm
+        run: npm publish --provenance --access public
+        working-directory: dir-mcp-plugins/npm
