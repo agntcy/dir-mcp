@@ -13,6 +13,10 @@ on:
       tag:
         description: "Git tag to publish (e.g. v1.3.5)"
         required: true
+      npm_tag:
+        description: "npm dist-tag; defaults to 'latest' for releases and 'next' for prereleases"
+        required: false
+        default: ""
       dirctl_tag:
         description: "dirctl release tag to bundle (e.g. v1.6.2); defaults to latest"
         required: false
@@ -41,9 +45,12 @@ jobs:
         id: ctx
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          INPUT_TAG: ${{ inputs.tag }}
+          INPUT_NPM_TAG: ${{ inputs.npm_tag }}
+          INPUT_DIRCTL_TAG: ${{ inputs.dirctl_tag }}
         run: |
           if [[ "$GITHUB_EVENT_NAME" == "workflow_dispatch" ]]; then
-            TAG="${{ inputs.tag }}"
+            TAG="$INPUT_TAG"
           else
             TAG=$(gh api "repos/${{ github.repository }}/git/refs/tags" \
               --jq '.[] | select(.object.sha == "${{ github.event.workflow_run.head_sha }}") | .ref' \
@@ -53,9 +60,26 @@ jobs:
               exit 1
             fi
           fi
+          VERSION="${TAG#v}"
+
+          # A version with a prerelease component (1.3.4-mcp.1) cannot be
+          # published without an explicit dist-tag — npm rejects it — and must
+          # never take over `latest`.
+          if [[ "$VERSION" == *-* ]]; then
+            NPM_TAG="${INPUT_NPM_TAG:-next}"
+            if [[ "$NPM_TAG" == "latest" ]]; then
+              echo "Error: refusing to publish prerelease $VERSION under the 'latest' dist-tag"
+              exit 1
+            fi
+          else
+            NPM_TAG="${INPUT_NPM_TAG:-latest}"
+          fi
+
           echo "tag=$TAG" >> "$GITHUB_OUTPUT"
-          echo "version=${TAG#v}" >> "$GITHUB_OUTPUT"
-          echo "dirctl_tag=${{ inputs.dirctl_tag }}" >> "$GITHUB_OUTPUT"
+          echo "version=$VERSION" >> "$GITHUB_OUTPUT"
+          echo "npm_tag=$NPM_TAG" >> "$GITHUB_OUTPUT"
+          echo "dirctl_tag=$INPUT_DIRCTL_TAG" >> "$GITHUB_OUTPUT"
+          echo "Publishing $VERSION under npm dist-tag '$NPM_TAG'"
 
       - name: Checkout code
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
@@ -112,5 +136,5 @@ jobs:
         working-directory: dir-mcp-plugins/npm
 
       - name: Publish to npm
-        run: npm publish --provenance --access public
+        run: npm publish --provenance --access public --tag "${{ steps.ctx.outputs.npm_tag }}"
         working-directory: dir-mcp-plugins/npm
