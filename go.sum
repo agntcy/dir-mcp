@@ -53,8 +53,8 @@ github.com/agntcy/dir/client v1.7.0 h1:jnzv0TH43bX9swNJmO1gOZviM+clpv7FZ2a7aug37
 github.com/agntcy/dir/client v1.7.0/go.mod h1:ZFw2SH3L936MdouM/iSdMEN0c26SUCtewzbh5T3vk/Q=
 github.com/agntcy/dir/utils v1.7.0 h1:YIOaY1IBsEIRWLAW8lkZ3cSylV8S4AXxb4yOnpTEQ2Q=
 github.com/agntcy/dir/utils v1.7.0/go.mod h1:ZRLDpEPlGfxNzmkm3aNQ2bOFpWYV1ynE661TigYGviA=
-github.com/agntcy/oasf-sdk/pkg v1.1.0 h1:Z2CfQ+XIjoHvlw2P0jcTRs59nbgVpjdnSVGGxmJTIEo=
-github.com/agntcy/oasf-sdk/pkg v1.1.0/go.mod h1:MAWceG+fNkVjgWbfrQOp64h6f5dbJbd1InP93fiMEiQ=
+github.com/agntcy/oasf-sdk/pkg v1.2.0 h1:OziCooJ7LZqJsFxjMPaSaO1xMpu3UBceR9Bx8kVB3rw=
+github.com/agntcy/oasf-sdk/pkg v1.2.0/go.mod h1:MAWceG+fNkVjgWbfrQOp64h6f5dbJbd1InP93fiMEiQ=
 github.com/asaskevich/govalidator v0.0.0-20230301143203-a9d515a09cc2 h1:DklsrG3dyBCFEj5IhUbnKptjxatkF07cF2ak3yi77so=
 github.com/asaskevich/govalidator v0.0.0-20230301143203-a9d515a09cc2/go.mod h1:WaHUgvxTVq04UNunO+XhnAqY/wQc+bxr74GqbsZ/Jqw=
 github.com/aws/aws-sdk-go-v2 v1.42.0 h1:XvXMJTkFQtpBKIWZnmr9ZEOc2InWM2yldjXEJ/bymhA=
