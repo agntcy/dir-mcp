@@ -82,6 +82,89 @@ let child = null;
 let restarting = false;
 let isConfigReloadChild = false;
 
+// The MCP client performs the `initialize` handshake exactly once per
+// session and never repeats it just because we swapped the backend process
+// out from under it on a config-reload restart. So we intercept the client's
+// stdin ourselves, remember that handshake, and replay it to a freshly
+// spawned child before letting the client's own traffic back through —
+// otherwise the new child rejects everything as "invalid during session
+// initialization".
+let cachedInitialize = null;
+let cachedInitializeId = null;
+let cachedInitialized = null;
+let replaySwallowId = null;
+let childReady = false;
+let handshakeReplayTimer = null;
+let pendingClientLines = [];
+let pendingEnd = false;
+
+function writeToChild(line) {
+  if (!childReady || !child || !child.stdin.writable) {
+    pendingClientLines.push(line);
+    return;
+  }
+  child.stdin.write(line + "\n");
+}
+
+// Client stdin EOF (e.g. the MCP client tearing down the session) must reach
+// the child too, or it hangs forever waiting for more input.
+function endChildStdin() {
+  if (!childReady || !child || !child.stdin.writable) {
+    pendingEnd = true;
+    return;
+  }
+  child.stdin.end();
+}
+
+function handleClientLine(line) {
+  try {
+    const msg = JSON.parse(line);
+    if (msg.method === "initialize" && cachedInitialize === null) {
+      cachedInitialize = line;
+      cachedInitializeId = msg.id;
+    } else if (msg.method === "notifications/initialized" && cachedInitialized === null) {
+      cachedInitialized = line;
+    }
+  } catch {
+    // not a JSON-RPC line — forward as-is
+  }
+  writeToChild(line);
+}
+
+// A restarted child is only ready for real client traffic once the replayed
+// handshake (if any) has run its course.
+function finishHandshakeReplay() {
+  if (handshakeReplayTimer) {
+    clearTimeout(handshakeReplayTimer);
+    handshakeReplayTimer = null;
+  }
+  replaySwallowId = null;
+  childReady = true;
+  for (const line of pendingClientLines.splice(0)) writeToChild(line);
+  if (pendingEnd) {
+    pendingEnd = false;
+    endChildStdin();
+  }
+}
+
+let clientStdinBuf = "";
+process.stdin.on("data", (chunk) => {
+  clientStdinBuf += chunk.toString();
+  const lines = clientStdinBuf.split("\n");
+  clientStdinBuf = lines.pop();
+  for (const line of lines) {
+    if (line) handleClientLine(line);
+  }
+});
+
+process.stdin.on("end", () => {
+  if (clientStdinBuf) {
+    handleClientLine(clientStdinBuf);
+    clientStdinBuf = "";
+  }
+  endChildStdin();
+});
+
 // Runs `dirctl auth login`, forwarding its output to stderr, and resolves when
 // it exits successfully. Rejects on non-zero exit or spawn error.
 function runOidcLogin(env) {
@@ -128,11 +211,26 @@ function runOidcLogin(env) {
 // can fix the config and trigger another restart.
 function spawnChild(env, binaryPath, fromConfigReload = false) {
   isConfigReloadChild = fromConfigReload;
+  childReady = false;
   debug(`spawning binary with args: ${JSON.stringify(process.argv.slice(2))}`);
   child = spawn(binaryPath, process.argv.slice(2), {
-    stdio: ["inherit", "pipe", "pipe"],
+    stdio: ["pipe", "pipe", "pipe"],
     env,
   });
+
+  child.stdin.on("error", (err) => debug(`child stdin error: ${err.message}`));
+
+  if (fromConfigReload && cachedInitialize) {
+    replaySwallowId = cachedInitializeId;
+    debug(`replaying cached initialize handshake to restarted binary`);
+    child.stdin.write(cachedInitialize + "\n");
+    handshakeReplayTimer = setTimeout(() => {
+      log(`restarted binary did not respond to replayed initialize — resuming anyway`);
+      finishHandshakeReplay();
+    }, 10000);
+  } else {
+    childReady = true;
+  }
 
   // stdout is the MCP JSON-RPC channel. Buffer line by line: forward JSON lines
   // to stdout, redirect anything else (e.g. stray Go log output) to stderr so
@@ -147,6 +245,17 @@ function spawnChild(env, binaryPath, fromConfigReload = false) {
     for (const line of lines) {
       if (DEBUG) process.stderr.write(`[dir-mcp-server stdout] ${line}\n`);
       if (line.trimStart().startsWith("{")) {
+        if (replaySwallowId !== null) {
+          let msg;
+          try { msg = JSON.parse(line); } catch { msg = null; }
+          if (msg && msg.id === replaySwallowId) {
+            // Response to our replayed `initialize` — the real client already
+            // got its own response the first time, so don't forward this one.
+            if (cachedInitialized) child.stdin.write(cachedInitialized + "\n");
+            finishHandshakeReplay();
+            continue;
+          }
+        }
         process.stdout.write(line + "\n");
       } else if (line) {
         if (line.includes("no OIDC access token")) needsOidcLogin = true;
@@ -162,6 +271,11 @@ function spawnChild(env, binaryPath, fromConfigReload = false) {
   });
 
   child.on("error", (err) => {
+    if (handshakeReplayTimer) {
+      clearTimeout(handshakeReplayTimer);
+      handshakeReplayTimer = null;
+    }
+    replaySwallowId = null;
     log(`failed to run binary — ${err.message}`);
     if (!restarting) {
       if (isConfigReloadChild) {
@@ -174,6 +288,11 @@ function spawnChild(env, binaryPath, fromConfigReload = false) {
   });
 
   child.on("close", (code, signal) => {
+    if (handshakeReplayTimer) {
+      clearTimeout(handshakeReplayTimer);
+      handshakeReplayTimer = null;
+    }
+    replaySwallowId = null;
     debug(`binary exited with status=${code} signal=${signal}`);
     if (restarting) return;
 
