@@ -74,6 +74,16 @@ The wrapper reads this file on every startup. Process environment variables and 
 
 To use a different path, set `DIR_MCP_CONFIG=/path/to/config.json`.
 
+## Dependencies installation
+
+`npm install` runs a postinstall step that downloads the two binaries this
+platform needs (`mcp-server`, `dirctl`) from GitHub Releases. If you already
+have the binaries, you can set these values in the config:
+
+- Set `DIR_MCP_SKIP_INSTALL=1` to skip the download during `npm install`.
+- Point `DIRECTORY_MCP_PATH` (and optionally `DIRECTORY_DIRCTL_PATH`) at
+  binaries you've placed yourself, via env var or the config file above.
+
 ## Supported platforms
 
 | OS | Architecture |

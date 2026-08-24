@@ -17,13 +17,6 @@ on:
         description: "npm dist-tag; defaults to 'latest' for releases and 'next' for prereleases"
         required: false
         default: ""
-      dirctl_tag:
-        description: "dirctl release tag to bundle (e.g. v1.6.2); defaults to latest"
-        required: false
-        default: ""
-
-env:
-  DIRCTL_REPO: agntcy/dir
 
 permissions:
   contents: read
@@ -47,7 +40,6 @@ jobs:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           INPUT_TAG: ${{ inputs.tag }}
           INPUT_NPM_TAG: ${{ inputs.npm_tag }}
-          INPUT_DIRCTL_TAG: ${{ inputs.dirctl_tag }}
         run: |
           if [[ "$GITHUB_EVENT_NAME" == "workflow_dispatch" ]]; then
             TAG="$INPUT_TAG"
@@ -78,7 +70,6 @@ jobs:
           echo "tag=$TAG" >> "$GITHUB_OUTPUT"
           echo "version=$VERSION" >> "$GITHUB_OUTPUT"
           echo "npm_tag=$NPM_TAG" >> "$GITHUB_OUTPUT"
-          echo "dirctl_tag=$INPUT_DIRCTL_TAG" >> "$GITHUB_OUTPUT"
           echo "Publishing $VERSION under npm dist-tag '$NPM_TAG'"
 
       - name: Checkout code
@@ -97,39 +88,14 @@ jobs:
         run: npm test
         working-directory: dir-mcp-plugins/npm
 
-      - name: Download mcp-server binaries from GitHub Release
+      - name: Verify mcp-server binaries exist on this release
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
           TAG="${{ steps.ctx.outputs.tag }}"
-          echo "Downloading mcp-server binaries from release $TAG"
-          gh release download "$TAG" \
-            --pattern "mcp-server-*" \
-            --dir dir-mcp-plugins/npm/bin/
-
-      - name: Download dirctl binaries
-        env:
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        run: |
-          DIRCTL_TAG="${{ steps.ctx.outputs.dirctl_tag }}"
-          if [[ -z "$DIRCTL_TAG" ]]; then
-            DIRCTL_TAG=$(gh release list -R "$DIRCTL_REPO" --limit 1 --json tagName --jq '.[0].tagName')
-          fi
-          echo "Downloading dirctl $DIRCTL_TAG from $DIRCTL_REPO"
-          for PLATFORM in linux-amd64 linux-arm64 darwin-amd64 darwin-arm64 windows-amd64; do
-            gh release download "$DIRCTL_TAG" \
-              -R "$DIRCTL_REPO" \
-              -p "dirctl-${PLATFORM}" \
-              -D dir-mcp-plugins/npm/bin/ \
-            && echo "Downloaded dirctl-${PLATFORM}" \
-            || echo "Warning: dirctl-${PLATFORM} not found in $DIRCTL_TAG, skipping"
-          done
-
-      - name: Make binaries executable
-        run: |
-          chmod +x dir-mcp-plugins/npm/bin/mcp-server-* \
-                   dir-mcp-plugins/npm/bin/dirctl-* \
-            2>/dev/null || true
+          echo "Checking release $TAG has mcp-server-* assets (the npm package's postinstall downloads these at install time)"
+          gh release view "$TAG" --json assets --jq '.assets[].name' | grep -q '^mcp-server-' \
+            || { echo "Error: release $TAG has no mcp-server-* assets"; exit 1; }
 
       - name: Set npm version
         run: npm version "${{ steps.ctx.outputs.version }}" --no-git-tag-version
