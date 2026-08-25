@@ -8,7 +8,7 @@ When the user asks to configure dir-mcp — change the server address, set an au
 
 ## Config file location
 
-The active config path is `$DIR_MCP_CONFIG` if set, otherwise `~/.config/dir-mcp/config.json`.
+The active config path is `$DIR_MCP_CONFIG` if set, otherwise `~/.config/dir-mcp/config.json`. Resolve this to an absolute path (e.g. `echo "${DIR_MCP_CONFIG:-$HOME/.config/dir-mcp/config.json}"`) before reading or editing it with file tools — those tools do not expand `~`, and editing the literal `~/...` string creates a stray file instead of updating the real config.
 
 ## Precedence
 

@@ -17,7 +17,8 @@ Use this skill to log in to the AGNTCY Directory instance that dir-mcp is config
 Read the resolved value from the environment or config:
 
 ```sh
-echo "${DIRECTORY_DIRCTL_PATH:-$(cat "${DIR_MCP_CONFIG:-$HOME/.config/dir-mcp/config.json}" | python3 -c "import sys,json; print(json.load(sys.stdin).get('DIRECTORY_DIRCTL_PATH',''))" 2>/dev/null)}"
+DIR_MCP_CONFIG_PATH="${DIR_MCP_CONFIG:-$HOME/.config/dir-mcp/config.json}"
+DIRCTL="${DIRCTL:-${DIRECTORY_DIRCTL_PATH:-$(python3 -c "import sys,json; print(json.load(open('$DIR_MCP_CONFIG_PATH')).get('DIRECTORY_DIRCTL_PATH',''))" 2>/dev/null)}}"
 ```
 
 If the value is empty or the file at that path does not exist, stop and ask the user:
@@ -38,10 +39,10 @@ If the version does not match `DIRECTORY_DIRCTL_VERSION`, warn the user:
 
 ## 2. Read the active dir-mcp config
 
-Resolve and read the config file to determine which Directory instance is being used:
+Resolve and read the config file to determine which Directory instance is being used. Use `$DIR_MCP_CONFIG_PATH` (resolved above) rather than the literal `~/...` path — file tools do not expand `~`, and any edit driven by this skill (e.g. via the `configure-dir-mcp` skill) must target this resolved absolute path or it will silently miss the real config:
 
 ```sh
-cat "${DIR_MCP_CONFIG:-$HOME/.config/dir-mcp/config.json}"
+cat "$DIR_MCP_CONFIG_PATH"
 ```
 
 Note the values of:

@@ -9,16 +9,18 @@ Use this skill to inspect and update the dir-mcp runtime configuration at `~/.co
 
 ## 1. Find the config file
 
-Resolve the active config path:
+Resolve the active config path to an **absolute path** — do not use `~` with your file-read/file-write tools. Those tools open paths literally and do not expand `~`, so an edit "to `~/.config/dir-mcp/config.json`" can silently create a file named `~` under the current working directory instead of touching the real config. Always resolve first:
 
 ```sh
-echo ${DIR_MCP_CONFIG:-~/.config/dir-mcp/config.json}
+echo "${DIR_MCP_CONFIG:-$HOME/.config/dir-mcp/config.json}"
 ```
 
-Then read it:
+Use the printed absolute path (e.g. `/Users/alice/.config/dir-mcp/config.json`) for every subsequent read or edit in this skill — never the literal `~/...` string.
+
+Read it with that absolute path:
 
 ```sh
-cat ~/.config/dir-mcp/config.json
+cat "${DIR_MCP_CONFIG:-$HOME/.config/dir-mcp/config.json}"
 ```
 
 If the file does not exist, the npm wrapper creates it with defaults on first run. You can also create it manually — see the template in step 4.
@@ -55,11 +57,12 @@ If the file does not exist, the npm wrapper creates it with defaults on first ru
 | `oidc` | Interactive OIDC login (`dirctl auth login`) |
 | `x509` | SPIFFE x509 SVID via Workload API |
 | `jwt` | SPIFFE JWT SVID via Workload API |
+| `jwt-tls` | SPIFFE JWT-SVID bearer over standard web-PKI TLS transport |
 | `tls` | Mutual TLS with client cert/key |
 
 ## 3. Update a setting
 
-Edit the file directly. For example, to point to a remote Directory server with token auth:
+Edit the file directly, using the absolute path resolved in step 1 (not the literal `~/...` path — file-edit tools do not expand it, and writing to `~/...` verbatim will create an unrelated file instead of updating the real config). For example, to point to a remote Directory server with token auth:
 
 ```json
 {
@@ -143,7 +146,17 @@ After saving, follow the `dirctl-auth` skill to log in — it locates the `dirct
 }
 ```
 
-## 5. Verify the config is active
+## 5. Confirm the write persisted
+
+Before relying on the change, re-read the config from the same absolute path and diff it against what you intended to write:
+
+```sh
+cat "${DIR_MCP_CONFIG:-$HOME/.config/dir-mcp/config.json}"
+```
+
+If the values don't match what you edited, the write did not land on the real file (e.g. it landed on a stray `~`-named file/dir under the current working directory) — locate and remove that stray file, then redo the edit against the resolved absolute path.
+
+## 6. Verify the config is active
 
 After updating the config, confirm the server picks it up by calling a tool that uses the setting. For the Directory server address, try a search:
 
