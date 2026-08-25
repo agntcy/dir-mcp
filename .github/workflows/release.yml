@@ -107,6 +107,9 @@ jobs:
           - goos: linux
             goarch: amd64
             binary: mcp-server-linux-amd64
+          - goos: linux
+            goarch: arm64
+            binary: mcp-server-linux-arm64
           - goos: darwin
             goarch: arm64
             binary: mcp-server-darwin-arm64
