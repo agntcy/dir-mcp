@@ -44,9 +44,13 @@ jobs:
           if [[ "$GITHUB_EVENT_NAME" == "workflow_dispatch" ]]; then
             TAG="$INPUT_TAG"
           else
-            TAG=$(gh api "repos/${{ github.repository }}/git/refs/tags" \
-              --jq '.[] | select(.object.sha == "${{ github.event.workflow_run.head_sha }}") | .ref' \
-              | sed 's|refs/tags/||' | head -1)
+            # Use the /tags endpoint (not /git/refs/tags): it reports the
+            # peeled commit SHA for both lightweight and annotated tags,
+            # whereas /git/refs/tags reports the tag object's own SHA for
+            # annotated tags, which never matches a workflow_run head_sha.
+            TAG=$(gh api "repos/${{ github.repository }}/tags" \
+              --jq '.[] | select(.commit.sha == "${{ github.event.workflow_run.head_sha }}") | .name' \
+              | head -1)
             if [[ -z "$TAG" ]]; then
               echo "Error: could not resolve a tag for commit ${{ github.event.workflow_run.head_sha }}"
               exit 1
