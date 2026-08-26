@@ -1,6 +1,6 @@
 {
   "name": "@agntcy/dir-mcp",
-  "version": "1.3.5-mcp.3",
+  "version": "1.3.5-mcp.5",
   "description": "MCP server for working with OASF agent records in the Agntcy Directory.",
   "license": "Apache-2.0",
   "repository": {
