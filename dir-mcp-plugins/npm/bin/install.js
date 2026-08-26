@@ -61,7 +61,7 @@ async function run({ binDir, pkg, fetchImpl, log: logFn }) {
     return;
   }
 
-  const mcpVersion = `v1.3.5`;
+  const mcpVersion = `v${pkg.version}`;
   const mcpUrl = releaseAssetUrl(MCP_REPO, mcpVersion, mcpName);
   const mcpDest = path.join(binDir, mcpName);
   logFn(`downloading ${mcpName} from ${mcpVersion}...`);
