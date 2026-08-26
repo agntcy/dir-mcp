@@ -3,7 +3,8 @@ module github.com/agntcy/dir-mcp
 go 1.26.5
 
 // Cosign does not updated the crypto11 owner
-replace github.com/ThalesIgnite/crypto11 => github.com/ThalesGroup/crypto11 v1.6.7
+// ThalesGroup/crypto11 v1.6.8 renamed its module path to eclipse-keypont/crypto11
+replace github.com/ThalesIgnite/crypto11 => github.com/eclipse-keypont/crypto11 v1.6.8
 
 require (
 	github.com/agntcy/dir/api v1.7.0
@@ -11,7 +12,7 @@ require (
 	github.com/agntcy/oasf-sdk/pkg v1.1.0
 	github.com/modelcontextprotocol/go-sdk v1.6.1
 	github.com/stretchr/testify v1.11.1
-	google.golang.org/protobuf v1.36.12-0.20260120151049-f2248ac996af
+	google.golang.org/protobuf v1.36.12
 )
 
 require (
