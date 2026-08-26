@@ -1,0 +1,136 @@
+# Copyright AGNTCY Contributors (https://github.com/agntcy)
+# SPDX-License-Identifier: Apache-2.0
+
+---
+name: npm update
+
+# This workflow does NOT publish to npm. It bumps the npm package version to
+# match the tag that was just released, and opens a PR with that change
+# against main (bin/install.js reads its pinned mcp-server download version
+# straight from package.json, so no separate bump is needed there).
+# Publishing happens separately, in npm-publish.yml, once that PR is merged
+# — see there for why the split exists.
+
+on:
+  workflow_run:
+    workflows: ["Release"]
+    types: [completed]
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: "Git tag to bump the npm package to (e.g. v1.3.5)"
+        required: true
+
+permissions:
+  contents: write
+  pull-requests: write
+
+jobs:
+  bump-version:
+    name: Bump npm package version
+    # For workflow_run: only run when the Release workflow succeeded on a version tag.
+    # For workflow_dispatch: always run.
+    if: >-
+      (github.event_name == 'workflow_run' &&
+       github.event.workflow_run.conclusion == 'success' &&
+       startsWith(github.event.workflow_run.head_branch, 'v')) ||
+      github.event_name == 'workflow_dispatch'
+    runs-on: ubuntu-latest
+    steps:
+      - name: Resolve release tag
+        id: ctx
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          INPUT_TAG: ${{ inputs.tag }}
+        run: |
+          if [[ "$GITHUB_EVENT_NAME" == "workflow_dispatch" ]]; then
+            TAG="$INPUT_TAG"
+          else
+            # Use the /tags endpoint (not /git/refs/tags): it reports the
+            # peeled commit SHA for both lightweight and annotated tags,
+            # whereas /git/refs/tags reports the tag object's own SHA for
+            # annotated tags, which never matches a workflow_run head_sha.
+            TAG=$(gh api "repos/${{ github.repository }}/tags" \
+              --jq '.[] | select(.commit.sha == "${{ github.event.workflow_run.head_sha }}") | .name' \
+              | head -1)
+            if [[ -z "$TAG" ]]; then
+              echo "Error: could not resolve a tag for commit ${{ github.event.workflow_run.head_sha }}"
+              exit 1
+            fi
+          fi
+          VERSION="${TAG#v}"
+          BRANCH="npm-release/${TAG}"
+
+          echo "tag=$TAG" >> "$GITHUB_OUTPUT"
+          echo "version=$VERSION" >> "$GITHUB_OUTPUT"
+          echo "branch=$BRANCH" >> "$GITHUB_OUTPUT"
+          echo "Bumping npm package to $VERSION (tag $TAG)"
+
+      - name: Checkout main
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: main
+          fetch-depth: 0
+
+      - name: Setup Node.js
+        uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
+        with:
+          node-version: "24.x"
+
+      - name: Verify mcp-server binaries exist on this release
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          TAG="${{ steps.ctx.outputs.tag }}"
+          echo "Checking release $TAG has mcp-server-* assets (the npm package's postinstall downloads these at install time)"
+          gh release view "$TAG" --json assets --jq '.assets[].name' | grep -q '^mcp-server-' \
+            || { echo "Error: release $TAG has no mcp-server-* assets"; exit 1; }
+
+      - name: Bump package.json version
+        run: npm version "${{ steps.ctx.outputs.version }}" --no-git-tag-version --allow-same-version
+        working-directory: dir-mcp-plugins/npm
+
+      - name: Run tests
+        run: npm test
+        working-directory: dir-mcp-plugins/npm
+
+      - name: Check for changes
+        id: diff
+        run: |
+          if git diff --quiet; then
+            echo "changed=false" >> "$GITHUB_OUTPUT"
+          else
+            echo "changed=true" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Skip if nothing to bump
+        if: steps.diff.outputs.changed == 'false'
+        run: echo "package.json already matches ${{ steps.ctx.outputs.tag }} — nothing to do."
+
+      - name: Commit and open PR
+        if: steps.diff.outputs.changed == 'true'
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          BRANCH="${{ steps.ctx.outputs.branch }}"
+          TAG="${{ steps.ctx.outputs.tag }}"
+
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git checkout -b "$BRANCH"
+          git add dir-mcp-plugins/npm/package.json dir-mcp-plugins/npm/package-lock.json
+          git commit -m "chore(npm): bump dir-mcp npm package to ${TAG#v}"
+          git push --force origin "$BRANCH"
+
+          if gh pr list --head "$BRANCH" --state open --json number --jq 'length' | grep -qx 0; then
+            gh pr create \
+              --title "chore(npm): bump dir-mcp npm package to ${TAG#v}" \
+              --body "Bumps the \`@agntcy/dir-mcp\` package version to match release [$TAG](https://github.com/${{ github.repository }}/releases/tag/$TAG).
+
+          Merging this triggers the npm publish workflow." \
+              --base main \
+              --head "$BRANCH" \
+              --label release
+          else
+            echo "PR for $BRANCH already open — updated it in place."
+          fi
