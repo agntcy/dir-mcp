@@ -6,7 +6,7 @@
   },
   "metadata": {
     "description": "Cursor plugin for the AGNTCY Agent Directory — search, create, validate, and publish OASF agent records directly from Cursor.",
-    "version": "1.3.4"
+    "version": "1.3.6"
   },
   "plugins": [
     {
