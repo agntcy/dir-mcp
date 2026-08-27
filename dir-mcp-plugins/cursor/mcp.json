@@ -1,0 +1,14 @@
+{
+  "mcpServers": {
+    "agntcy-dir": {
+      "command": "npx",
+      "args": [
+        "-y",
+        "@agntcy/dir-mcp"
+      ],
+      "env": {
+        "DIR_MCP_CONFIG": "~/.config/dir-mcp/config.json"
+      }
+    }
+  }
+}

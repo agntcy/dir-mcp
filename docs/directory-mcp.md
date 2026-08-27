@@ -455,7 +455,7 @@ dirctl auth login --oidc-issuer=<issuer-url> --oidc-client-id=dirctl
       "command": "/absolute/path/to/dirctl",
       "args": ["mcp", "serve"],
       "env": {
-        "DIRECTORY_CLIENT_SERVER_ADDRESS": "prod.gateway.ads.outshift.io:443",
+        "DIRECTORY_CLIENT_SERVER_ADDRESS": "prod.api.ads.outshift.io:443",
         "DIRECTORY_CLIENT_AUTH_MODE": "oidc",
         "DIRECTORY_CLIENT_AUTH_TOKEN": "<your_bearer_token>"
       }
@@ -473,7 +473,7 @@ dirctl auth login --oidc-issuer=<issuer-url> --oidc-client-id=dirctl
       "command": "/absolute/path/to/dirctl",
       "args": ["mcp", "serve"],
       "env": {
-        "DIRECTORY_CLIENT_SERVER_ADDRESS": "prod.gateway.ads.outshift.io:443",
+        "DIRECTORY_CLIENT_SERVER_ADDRESS": "prod.api.ads.outshift.io:443",
         "DIRECTORY_CLIENT_AUTH_MODE": "oidc"
       }
     }
