@@ -1,6 +1,6 @@
 {
   "name": "agntcy-dir",
-  "version": "1.3.4",
+  "version": "1.3.6",
   "description": "Search, create, validate, and publish OASF agent records in the AGNTCY Agent Directory. Discover and share AI agents and MCP servers across the open agent ecosystem.",
   "author": {
     "name": "AGNTCY Contributors",

@@ -7,6 +7,15 @@ description: Generate, validate, and publish an OASF agent record for any codeba
 
 Use this skill to register an AI agent or MCP server in the AGNTCY Agent Directory by generating a valid [OASF](https://github.com/agntcy/oasf) record.
 
+## Record structure
+
+An OASF record is a JSON document describing an AI agent or MCP server. Required top-level fields:
+- `name` — URL-based identifier, e.g. `"https://github.com/example/my-agent"`
+- `version` — semver string, e.g. `"v1.0.0"`
+- `description` — human-readable summary
+- `skills` — array of OASF skill objects (`{ "id": "...", "name": "..." }`)
+- `locators` — array of deployment locators (Docker image, PyPI, npm, etc.)
+
 ## Workflow
 
 ### 1. Generate the record
@@ -64,7 +73,7 @@ Once the record is valid, push it:
 Call agntcy_dir_push_record with record_json=<the validated record JSON>
 ```
 
-Save the returned `cid` — it is the content-addressable identifier for this record version.
+Save the returned `cid` — it is the content-addressable identifier for this record version and the canonical reference for it; there is no other way to retrieve the exact same record later without re-pushing.
 
 ## Tips
 
