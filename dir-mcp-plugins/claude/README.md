@@ -21,18 +21,23 @@ Claude Code plugin for the [AGNTCY Agent Directory](https://github.com/agntcy/di
 | `agntcy_oasf_get_schema_domains` | Browse the OASF domain taxonomy |
 | `agntcy_oasf_list_versions` | List supported OASF schema versions |
 
-**Skills** (namespaced as `/agntcy-dir:<skill-name>`):
-- `create-oasf-record` — Generate, validate, and publish a record for any codebase
-- `search-agents` — Discover agents and verify their authenticity
+**Skills** (namespaced as `/agntcy-dir:<skill-name>`, and applied automatically when the trigger conditions in their description match):
+
+| Skill | Purpose |
+|-------|---------|
+| `create-oasf-record` | Generate, validate, and publish a record for any codebase |
+| `search-agents` | Discover agents and verify their authenticity |
+| `configure-dir-mcp` | View and update the dir-mcp config file through chat — server address, auth mode, tokens, TLS, OIDC |
+| `dirctl-auth` | Authenticate with the Directory using the bundled `dirctl` binary via browser-based PKCE login |
 
 ## Prerequisites
 
-- **Node.js 18+** with `npx` — used to download and run the MCP server binary on first run
-- A running **AGNTCY Directory server** (for push/pull/search/verify tools)
+- **Node.js 18+** — used to run the MCP server wrapper
+- A running **AGNTCY Directory server** — required for push/pull/search/verify tools
 
-> If you only need OASF schema tools (validate, import, export, get_schema), no Directory server is required — only the `OASF_API_VALIDATION_SCHEMA_URL` env var is needed.
+> Schema-only tools (`validate`, `import`, `export`, `get_schema`, taxonomies) work without a Directory server. Only `OASF_API_VALIDATION_SCHEMA_URL` is needed.
 
-## Setup
+## Installation
 
 Test locally with:
 
@@ -40,25 +45,35 @@ Test locally with:
 claude --plugin-dir ./claude
 ```
 
-This repo doubles as a marketplace: register it once with `claude plugin marketplace add agntcy/dir-mcp`, then install with `/plugin install agntcy-dir@agntcy-dir-mcp`.
+This repo doubles as a marketplace: register it once with `claude plugin marketplace add agntcy/dir-mcp`, then install with `/plugin install agntcy-dir@agntcy-dir-mcp`. On first run `npx` downloads the `@agntcy/dir-mcp` package, which fetches the platform-specific `dir-mcp` and `dirctl` binaries and caches them in the npm cache.
 
 ## Configuration
 
-`.mcp.json` sets sensible defaults for a local, no-auth Directory server:
+The MCP server reads its settings from `~/.config/dir-mcp/config.json` (or the path in `$DIR_MCP_CONFIG`, set in `.mcp.json`). Use the `configure-dir-mcp` skill to update it through chat. The server restarts automatically whenever the file changes — no Claude Code restart needed.
 
-| Variable | Default | Purpose |
-|----------|---------|---------|
-| `DIRECTORY_CLIENT_SERVER_ADDRESS` | `0.0.0.0:8888` | Directory server host:port |
-| `DIRECTORY_CLIENT_AUTH_MODE` | `none` | Auth mode (`none`, `token`, `oidc`, `tls`, …) |
-| `DIRECTORY_CLIENT_AUTH_TOKEN` | *(empty)* | Bearer token, when `DIRECTORY_CLIENT_AUTH_MODE=token` |
-| `OASF_API_VALIDATION_SCHEMA_URL` | `https://schema.oasf.outshift.com` | OASF schema validation endpoint |
+Key settings:
 
-Override any of these in your shell environment before starting Claude Code, or edit `.mcp.json` directly for a project-specific server.
+| Key | Purpose |
+|-----|---------|
+| `DIRECTORY_CLIENT_SERVER_ADDRESS` | Directory server host:port |
+| `DIRECTORY_CLIENT_AUTH_MODE` | Auth mode (`none`, `token`, `oidc`, `tls`, …) |
+| `DIRECTORY_MCP_PATH` | Override the bundled MCP server binary |
+| `DIRECTORY_MCP_VERSION` | Expected MCP server version |
+| `DIRECTORY_DIRCTL_PATH` | Override the bundled `dirctl` binary |
+| `DIRECTORY_DIRCTL_VERSION` | Expected `dirctl` version |
+
+See the `configure-dir-mcp` skill for the full option reference and ready-to-paste config templates.
+
+## Authentication
+
+For Directory instances that require OIDC login, use the `dirctl-auth` skill. It reads `DIRECTORY_DIRCTL_PATH` from the config (set automatically to the bundled binary) and runs the browser-based login flow. No PATH setup required.
 
 ## Quick start
 
-1. Install the plugin.
-2. Open a project and use `/agntcy-dir:create-oasf-record` (or just ask Claude to register the project) to generate and publish a record.
+1. Install the plugin (see above).
+2. Ask Claude: *"configure dir-mcp"* — the skill walks you through the config file.
+3. If your Directory requires login, ask: *"authenticate with dirctl"*.
+4. Open a project and ask Claude to create an OASF record for it, or run `/agntcy-dir:create-oasf-record`.
 
 ## License
 
