@@ -26,7 +26,7 @@ Claude Code plugin for the [AGNTCY Agent Directory](https://github.com/agntcy/di
 | Skill | Purpose |
 |-------|---------|
 | `create-oasf-record` | Generate, validate, and publish a record for any codebase |
-| `search-agents` | Discover agents and verify their authenticity |
+| `search-agents` | Discover agents, verify their authenticity, and pull records via the bundled `dirctl` binary + `jq` to avoid blowing the tool-result token limit on large records |
 | `configure-dir-mcp` | View and update the dir-mcp config file through chat — server address, auth mode, tokens, TLS, OIDC |
 | `dirctl-auth` | Authenticate with the Directory using the bundled `dirctl` binary via browser-based PKCE login |
 
