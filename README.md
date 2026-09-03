@@ -4,6 +4,7 @@
 [![CI](https://github.com/agntcy/dir-mcp/actions/workflows/ci.yml/badge.svg?branch=main)](https://github.com/agntcy/dir-mcp/actions/workflows/ci.yml)
 [![Coverage](https://codecov.io/gh/agntcy/dir-mcp/branch/main/graph/badge.svg)](https://codecov.io/gh/agntcy/dir-mcp)
 [![License](https://img.shields.io/github/license/agntcy/dir-mcp)](./LICENSE.md)
+[![OpenSSF Scorecard](https://api.scorecard.dev/projects/github.com/agntcy/dir-mcp/badge)](https://scorecard.dev/viewer/?uri=github.com/agntcy/dir-mcp)
 
 [Model Context Protocol (MCP)](https://modelcontextprotocol.io/) server for working with OASF agent records in the [AGNTCY Agent Directory](https://github.com/agntcy/dir).
 
