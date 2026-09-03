@@ -1,6 +1,6 @@
 module github.com/agntcy/dir-mcp
 
-go 1.26.5
+go 1.26.7
 
 // Cosign does not updated the crypto11 owner
 // ThalesGroup/crypto11 v1.6.8 renamed its module path to eclipse-keypont/crypto11
