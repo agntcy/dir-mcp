@@ -116,6 +116,15 @@
       "description": [
         "Always allow vulnerability/security fixes, even when other rules disable specific dependencies."
       ]
+    },
+    {
+      "matchDepNames": ["aquasecurity/trivy-action"],
+      "extractVersion": "^v(?<version>.*)$",
+      "description": [
+        "aquasecurity/trivy-action publishes duplicate tags for the same release, e.g. both v0.35.0 and 0.35.0.",
+        "The bare, non-'v'-prefixed tag breaks Renovate's github-tags lookup (no-result error).",
+        "Restrict Renovate to only consider 'v'-prefixed tags for this action."
+      ]
     }
   ],
   "postUpdateOptions": [
