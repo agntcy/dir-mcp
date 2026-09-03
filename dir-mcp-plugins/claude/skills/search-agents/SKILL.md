@@ -45,28 +45,20 @@ The search returns `record_cids` — content identifiers you can use to fetch th
 
 `agntcy_dir_pull_record` returns the entire record inline. Populated records routinely exceed 50KB — well past the tool-result token limit — get truncated to a saved file, and burn a large chunk of context reading that file back in even when only a few fields are needed. **Only use `agntcy_dir_pull_record` directly for a quick check when you expect a small record** (e.g. one you just created and know is minimal). For anything else — browsing search results, inspecting third-party records, or pulling more than one — pull with the bundled `dirctl` binary and filter with `jq` before any of it reaches the model.
 
-### 1. Resolve the dirctl binary and Directory connection
+### 1. Invoke dirctl through the dir-mcp npm package — never system-wide
 
-Never scan PATH for `dirctl` (same rule as the `dirctl-auth` skill). Resolve the bundled/configured binary path, and export the `DIRECTORY_CLIENT_*` connection settings from the dir-mcp config as environment variables — `dirctl` reads its server address and auth mode from the environment only, it does not read the `~/.config/dir-mcp/config.json` file itself:
+**Never run a bare `dirctl` or search PATH/the filesystem for it.** Use the `@agntcy/dir-mcp` npm package's own bundled binary — the same package `.mcp.json` already runs via `npx -y @agntcy/dir-mcp` — via its second bin entry:
 
 ```sh
-DIR_MCP_CONFIG_PATH="${DIR_MCP_CONFIG:-$HOME/.config/dir-mcp/config.json}"
-DIRCTL="${DIRECTORY_DIRCTL_PATH:-$(python3 -c "import json; print(json.load(open('$DIR_MCP_CONFIG_PATH')).get('DIRECTORY_DIRCTL_PATH',''))" 2>/dev/null)}"
-eval "$(python3 -c "
-import json
-cfg = json.load(open('$DIR_MCP_CONFIG_PATH'))
-for k in ('DIRECTORY_CLIENT_SERVER_ADDRESS', 'DIRECTORY_CLIENT_AUTH_MODE', 'DIRECTORY_CLIENT_AUTH_TOKEN', 'DIRECTORY_CLIENT_OIDC_ISSUER', 'DIRECTORY_CLIENT_OIDC_CLIENT_ID'):
-    if cfg.get(k):
-        print(f'export {k}={json.dumps(cfg[k])}')
-")"
+npx -y --package=@agntcy/dir-mcp dirctl <subcommand and flags>
 ```
 
-If `$DIRCTL` is empty, stop and point the user at the `dirctl-auth` skill's binary-lookup step before continuing.
+Always spell out this full command in each call below — don't assign it to a shell variable first (e.g. `DIRCTL="npx ..."; $DIRCTL ...`); that assignment syntax is bash/zsh-only and fails outright under fish (`fish: Unsupported use of '='`), and you cannot assume which shell the Bash tool is running. This wrapper loads `~/.config/dir-mcp/config.json` (or `$DIR_MCP_CONFIG`) and merges its `DIRECTORY_CLIENT_*` settings into the environment for you, then resolves the binary itself from `DIRECTORY_DIRCTL_PATH` or its own package `bin/` directory — never from PATH. See the `dirctl-auth` skill for the full resolution details and what to do if the binary is missing.
 
 ### 2. Pull straight to a file, never to stdout
 
 ```sh
-"$DIRCTL" pull <cid> --output json --output-file /tmp/record.json
+npx -y --package=@agntcy/dir-mcp dirctl pull <cid> --output json --output-file /tmp/record.json
 ```
 
 `--output-file` writes the full record to disk without ever printing it — nothing large hits a tool result at this step. (`dirctl pull` also accepts a `name:version` in place of a CID.)
@@ -81,7 +73,7 @@ Adjust the jq filter to whatever fields the task actually needs — this is the 
 
 ### Multiple records
 
-`dirctl search --format cid` (the default) is already cheap — it returns CIDs only, same as `agntcy_dir_search_local`. Loop `dirctl pull ... --output-file` per CID into separate files, then run one `jq` pass across all of them (e.g. `jq -s '[.[] | {name, version}]' /tmp/record-*.json`) rather than pulling each one's full record into context individually.
+`npx -y --package=@agntcy/dir-mcp dirctl search --format cid` (the default) is already cheap — it returns CIDs only, same as `agntcy_dir_search_local`. Loop `npx -y --package=@agntcy/dir-mcp dirctl pull ... --output-file` per CID into separate files, then run one `jq` pass across all of them (e.g. `jq -s '[.[] | {name, version}]' /tmp/record-*.json`) rather than pulling each one's full record into context individually.
 
 ## Verify a Record
 
