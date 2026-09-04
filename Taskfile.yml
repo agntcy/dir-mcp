@@ -10,7 +10,7 @@ vars:
   IMAGE_REPO: '{{ .IMAGE_REPO | default "ghcr.io/agntcy/dir-mcp" }}'
   IMAGE_TAG: '{{ .IMAGE_TAG | default "latest" }}'
   # renovate: datasource=github-releases depName=renovatebot/renovate versioning=semver
-  RENOVATE_VERSION: "43.255.2"
+  RENOVATE_VERSION: "44.48.3"
 
 tasks:
   default:
