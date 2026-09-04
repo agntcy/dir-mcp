@@ -176,8 +176,7 @@ jobs:
         run: |
           for f in mcp-server-*; do
             cosign sign-blob --yes \
-              --output-signature "${f}.sig" \
-              --output-certificate "${f}.pem" \
+              --bundle "${f}.sigstore.json" \
               "$f"
           done
 
@@ -188,5 +187,4 @@ jobs:
           generate_release_notes: true
           files: |
             mcp-server-*
-            *.sig
-            *.pem
+            *.sigstore.json
