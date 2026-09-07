@@ -5,8 +5,8 @@
 name: npm update
 
 # This workflow does NOT publish to npm. It bumps the npm package version,
-# and the Cursor plugin and marketplace manifest versions, to match the tag
-# that was just released, and opens a PR with that change against main
+# and the Cursor and Claude plugin/marketplace manifest versions, to match
+# the tag that was just released, and opens a PR with that change against main
 # (bin/install.js reads its pinned mcp-server download version straight from
 # package.json, so no separate bump is needed there).
 # Publishing happens separately, in npm-publish.yml, once that PR is merged
@@ -101,6 +101,14 @@ jobs:
           jq --arg v "$VERSION" '.metadata.version = $v' .cursor-plugin/marketplace.json > /tmp/marketplace.json
           mv /tmp/marketplace.json .cursor-plugin/marketplace.json
 
+      - name: Bump claude plugin manifest versions
+        run: |
+          VERSION="${{ steps.ctx.outputs.version }}"
+          jq --arg v "$VERSION" '.version = $v' dir-mcp-plugins/claude/.claude-plugin/plugin.json > /tmp/plugin.json
+          mv /tmp/plugin.json dir-mcp-plugins/claude/.claude-plugin/plugin.json
+          jq --arg v "$VERSION" '.metadata.version = $v' .claude-plugin/marketplace.json > /tmp/marketplace.json
+          mv /tmp/marketplace.json .claude-plugin/marketplace.json
+
       - name: Run tests
         run: npm test
         working-directory: dir-mcp-plugins/npm
@@ -130,14 +138,15 @@ jobs:
           git config user.email "github-actions[bot]@users.noreply.github.com"
           git checkout -b "$BRANCH"
           git add dir-mcp-plugins/npm/package.json dir-mcp-plugins/npm/package-lock.json \
-            dir-mcp-plugins/cursor/.cursor-plugin/plugin.json .cursor-plugin/marketplace.json
+            dir-mcp-plugins/cursor/.cursor-plugin/plugin.json .cursor-plugin/marketplace.json \
+            dir-mcp-plugins/claude/.claude-plugin/plugin.json .claude-plugin/marketplace.json
           git commit -m "chore(npm): bump dir-mcp npm package to ${TAG#v}"
           git push --force origin "$BRANCH"
 
           if gh pr list --head "$BRANCH" --state open --json number --jq 'length' | grep -qx 0; then
             gh pr create \
               --title "chore(npm): bump dir-mcp npm package to ${TAG#v}" \
-              --body "Bumps the \`@agntcy/dir-mcp\` package and Cursor plugin/marketplace manifest versions to match release [$TAG](https://github.com/${{ github.repository }}/releases/tag/$TAG).
+              --body "Bumps the \`@agntcy/dir-mcp\` package and Cursor/Claude plugin/marketplace manifest versions to match release [$TAG](https://github.com/${{ github.repository }}/releases/tag/$TAG).
 
           Merging this triggers the npm publish workflow." \
               --base main \
