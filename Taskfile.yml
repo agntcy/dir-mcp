@@ -5,7 +5,7 @@ version: "3"
 
 vars:
   BIN_DIR: ./.bin
-  GOLANGCI_LINT_VERSION: "2.11.3"
+  GOLANGCI_LINT_VERSION: "2.13.2"
   GOLANGCI_LINT_BIN: "{{ .BIN_DIR }}/golangci-lint-{{ .GOLANGCI_LINT_VERSION }}"
   IMAGE_REPO: '{{ .IMAGE_REPO | default "ghcr.io/agntcy/dir-mcp" }}'
   IMAGE_TAG: '{{ .IMAGE_TAG | default "latest" }}'
