@@ -4,16 +4,16 @@ const fs = require("fs");
 const os = require("os");
 const path = require("path");
 
-const DEFAULT_CONFIG = {
+// In-memory default for the one setting that's dir-mcp's own concern. Which
+// directory server to talk to, and how to authenticate against it, is set via
+// plain DIRECTORY_CLIENT_* env vars read directly by the mcp-server binary —
+// dir-mcp keeps no config file of its own for those and doesn't interpret or
+// default them itself. (The bundled dirctl binary has its own, separate
+// config with named contexts, but the mcp-server binary does not read it —
+// see the README.)
+const DEFAULT_ENV = {
   OASF_API_VALIDATION_SCHEMA_URL: "https://schema.oasf.outshift.com",
-  DIRECTORY_CLIENT_SERVER_ADDRESS: "0.0.0.0:8888",
-  DIRECTORY_CLIENT_AUTH_MODE: "none",
-  DIRECTORY_CLIENT_AUTH_TOKEN: "",
-  DIRECTORY_MCP_PATH: "",
-  DIRECTORY_DIRCTL_PATH: "",
 };
-
-const DEFAULT_CONFIG_PATH = path.join(os.homedir(), ".config", "dir-mcp", "config.json");
 
 // Expands a leading `~` and any `$HOME`/`${HOME}` reference to the user's home
 // directory. MCP client configs (e.g. mcp.json `env` blocks) set env vars
@@ -23,27 +23,10 @@ function expandHome(p) {
   return p.replace(/^~/, os.homedir()).replace(/\$\{HOME\}|\$HOME/g, os.homedir());
 }
 
-const configPath = path.resolve(expandHome(process.env.DIR_MCP_CONFIG || DEFAULT_CONFIG_PATH));
-
-// Reads the config file, creating it with DEFAULT_CONFIG values if absent.
-// Returns the parsed object, or {} on error.
-function loadConfig(log) {
-  if (!fs.existsSync(configPath)) {
-    try {
-      fs.mkdirSync(path.dirname(configPath), { recursive: true });
-      fs.writeFileSync(configPath, JSON.stringify(DEFAULT_CONFIG, null, 2) + "\n", "utf8");
-      log(`created default config at ${configPath}`);
-    } catch (err) {
-      log(`warning: could not create default config at ${configPath}: ${err.message}`);
-    }
-  }
-
-  try {
-    return JSON.parse(fs.readFileSync(configPath, "utf8"));
-  } catch (err) {
-    if (err.code !== "ENOENT") log(`warning: could not read config ${configPath}: ${err.message}`);
-    return {};
-  }
+// Returns the effective environment: process.env layered over DEFAULT_ENV, so
+// explicit env vars (from the shell or an MCP client's `env` block) always win.
+function resolveEnv() {
+  return { ...DEFAULT_ENV, ...process.env };
 }
 
 // Returns the platform-specific mcp-server binary name.
@@ -93,10 +76,9 @@ function resolveDirctlPath(env, binDir) {
 }
 
 module.exports = {
-  DEFAULT_CONFIG,
-  configPath,
+  DEFAULT_ENV,
   expandHome,
-  loadConfig,
+  resolveEnv,
   getMcpServerBinaryName,
   getDirctlBinaryName,
   resolveMcpServerPath,

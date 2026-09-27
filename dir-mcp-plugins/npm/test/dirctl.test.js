@@ -58,11 +58,6 @@ function writeFakeBinary(dir, lines) {
   return p;
 }
 
-// Minimal env that redirects the config file to a temp path.
-function cfgEnv(tmpDir) {
-  return { DIR_MCP_CONFIG: path.join(tmpDir, "config.json") };
-}
-
 // ---------------------------------------------------------------------------
 // Module export tests
 // ---------------------------------------------------------------------------
@@ -110,16 +105,13 @@ describe("dirctl.js module exports", () => {
 // ---------------------------------------------------------------------------
 
 describe("dirctl.js process behaviour", () => {
-  let tmpCfg;
   let tmpBin;
 
   beforeEach(() => {
-    tmpCfg = fs.mkdtempSync(path.join(os.tmpdir(), "dirctl-cfg-"));
     tmpBin = fs.mkdtempSync(path.join(os.tmpdir(), "dirctl-bin-"));
   });
 
   afterEach(() => {
-    fs.rmSync(tmpCfg, { recursive: true, force: true });
     fs.rmSync(tmpBin, { recursive: true, force: true });
   });
 
@@ -131,7 +123,6 @@ describe("dirctl.js process behaviour", () => {
     it("exits 1 when DIRECTORY_DIRCTL_PATH points to a non-existent file", async () => {
       const missing = path.join(tmpBin, "no-such-dirctl");
       const { code, stderr } = await runDirctl({
-        ...cfgEnv(tmpCfg),
         DIRECTORY_DIRCTL_PATH: missing,
       });
 
@@ -147,7 +138,6 @@ describe("dirctl.js process behaviour", () => {
     it("error message for missing DIRECTORY_DIRCTL_PATH binary includes the path", async () => {
       const missing = path.join(tmpBin, "no-such-dirctl");
       const { stderr } = await runDirctl({
-        ...cfgEnv(tmpCfg),
         DIRECTORY_DIRCTL_PATH: missing,
       });
 
@@ -166,7 +156,7 @@ describe("dirctl.js process behaviour", () => {
       }
 
       // No DIRECTORY_DIRCTL_PATH, no bundled binary → resolveDirctlPath returns null.
-      const { code, stderr } = await runDirctl(cfgEnv(tmpCfg));
+      const { code, stderr } = await runDirctl({});
 
       assert.equal(code, 1);
       assert.ok(
@@ -178,7 +168,6 @@ describe("dirctl.js process behaviour", () => {
     it("uses [dirctl] prefix for its own log messages", async () => {
       const missing = path.join(tmpBin, "no-such-dirctl");
       const { stderr } = await runDirctl({
-        ...cfgEnv(tmpCfg),
         DIRECTORY_DIRCTL_PATH: missing,
       });
 
@@ -197,7 +186,6 @@ describe("dirctl.js process behaviour", () => {
     it("forwards exit code 0 from the dirctl binary", async () => {
       const bin = writeFakeBinary(tmpBin, ["process.exit(0);"]);
       const { code } = await runDirctl({
-        ...cfgEnv(tmpCfg),
         DIRECTORY_DIRCTL_PATH: bin,
       });
 
@@ -207,7 +195,6 @@ describe("dirctl.js process behaviour", () => {
     it("forwards a non-zero exit code from the dirctl binary", async () => {
       const bin = writeFakeBinary(tmpBin, ["process.exit(7);"]);
       const { code } = await runDirctl({
-        ...cfgEnv(tmpCfg),
         DIRECTORY_DIRCTL_PATH: bin,
       });
 
@@ -217,7 +204,6 @@ describe("dirctl.js process behaviour", () => {
     it("forwards exit code 1 (common failure case)", async () => {
       const bin = writeFakeBinary(tmpBin, ["process.exit(1);"]);
       const { code } = await runDirctl({
-        ...cfgEnv(tmpCfg),
         DIRECTORY_DIRCTL_PATH: bin,
       });
 
@@ -237,7 +223,7 @@ describe("dirctl.js process behaviour", () => {
       ]);
 
       const { code, stdout } = await runDirctl(
-        { ...cfgEnv(tmpCfg), DIRECTORY_DIRCTL_PATH: bin },
+        { DIRECTORY_DIRCTL_PATH: bin },
         ["auth", "login", "--flag"],
       );
 
@@ -253,7 +239,6 @@ describe("dirctl.js process behaviour", () => {
       ]);
 
       const { code, stdout } = await runDirctl({
-        ...cfgEnv(tmpCfg),
         DIRECTORY_DIRCTL_PATH: bin,
       });
 
@@ -268,7 +253,7 @@ describe("dirctl.js process behaviour", () => {
       ]);
 
       const { code, stdout } = await runDirctl(
-        { ...cfgEnv(tmpCfg), DIRECTORY_DIRCTL_PATH: bin },
+        { DIRECTORY_DIRCTL_PATH: bin },
         ["record push", "--name", "my agent"],
       );
 
@@ -291,7 +276,6 @@ describe("dirctl.js process behaviour", () => {
       ]);
 
       const { code, stdout } = await runDirctl({
-        ...cfgEnv(tmpCfg),
         DIRECTORY_DIRCTL_PATH: bin,
       });
 
@@ -300,18 +284,7 @@ describe("dirctl.js process behaviour", () => {
       assert.equal(v, bin);
     });
 
-    it("merges config file values into the binary's environment", async () => {
-      const configFile = path.join(tmpCfg, "config.json");
-      fs.mkdirSync(tmpCfg, { recursive: true });
-      fs.writeFileSync(configFile, JSON.stringify({
-        OASF_API_VALIDATION_SCHEMA_URL: "https://cfg-dirctl.example.com",
-        DIRECTORY_CLIENT_SERVER_ADDRESS: "0.0.0.0:8888",
-        DIRECTORY_CLIENT_AUTH_MODE: "none",
-        DIRECTORY_CLIENT_AUTH_TOKEN: "",
-        DIRECTORY_MCP_PATH: "",
-        DIRECTORY_DIRCTL_PATH: "",
-      }));
-
+    it("applies the OASF schema URL default when the caller doesn't set one", async () => {
       const bin = writeFakeBinary(tmpBin, [
         "const v = process.env.OASF_API_VALIDATION_SCHEMA_URL || \"\";",
         "process.stdout.write(JSON.stringify({ v }) + \"\\n\");",
@@ -319,39 +292,29 @@ describe("dirctl.js process behaviour", () => {
       ]);
 
       const { code, stdout } = await runDirctl({
-        DIR_MCP_CONFIG: configFile,
         DIRECTORY_DIRCTL_PATH: bin,
       });
 
       assert.equal(code, 0);
       const { v } = JSON.parse(stdout.trim());
-      assert.equal(v, "https://cfg-dirctl.example.com");
+      assert.equal(v, "https://schema.oasf.outshift.com");
     });
 
-    it("process.env overrides config file values in the binary's environment", async () => {
-      const configFile = path.join(tmpCfg, "config.json");
-      fs.mkdirSync(tmpCfg, { recursive: true });
-      fs.writeFileSync(configFile, JSON.stringify({
-        DIRECTORY_CLIENT_AUTH_MODE: "none",
-        DIRECTORY_MCP_PATH: "",
-        DIRECTORY_DIRCTL_PATH: "",
-      }));
-
+    it("forwards directory-instance selection env vars straight through to the binary, for dirctl to interpret", async () => {
       const bin = writeFakeBinary(tmpBin, [
-        "const v = process.env.DIRECTORY_CLIENT_AUTH_MODE || \"\";",
+        "const v = process.env.DIRECTORY_CLIENT_CONTEXT || \"\";",
         "process.stdout.write(JSON.stringify({ v }) + \"\\n\");",
         "process.exit(0);",
       ]);
 
       const { code, stdout } = await runDirctl({
-        DIR_MCP_CONFIG: configFile,
         DIRECTORY_DIRCTL_PATH: bin,
-        DIRECTORY_CLIENT_AUTH_MODE: "token",  // env overrides config
+        DIRECTORY_CLIENT_CONTEXT: "staging",
       });
 
       assert.equal(code, 0);
       const { v } = JSON.parse(stdout.trim());
-      assert.equal(v, "token");
+      assert.equal(v, "staging");
     });
   });
 
@@ -368,7 +331,6 @@ describe("dirctl.js process behaviour", () => {
       ]);
 
       const { code, stdout } = await runDirctl({
-        ...cfgEnv(tmpCfg),
         DIRECTORY_DIRCTL_PATH: bin,
       });
 
@@ -384,7 +346,6 @@ describe("dirctl.js process behaviour", () => {
       ]);
 
       const { code, stderr } = await runDirctl({
-        ...cfgEnv(tmpCfg),
         DIRECTORY_DIRCTL_PATH: bin,
       });
 

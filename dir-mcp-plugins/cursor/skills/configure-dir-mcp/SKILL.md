@@ -1,29 +1,24 @@
 ---
 name: configure-dir-mcp
-description: View and update the dir-mcp configuration file through chat to set the directory server address, authentication mode, and other runtime options.
+description: View and update how dir-mcp connects to a Directory server through chat to set the server address, authentication mode, and other runtime options.
 ---
 
 # Configure dir-mcp
 
-Use this skill to inspect and update the dir-mcp runtime configuration at `~/.config/dir-mcp/config.json` (or the path in `$DIR_MCP_CONFIG`).
+dir-mcp keeps no config file of its own. Two independent things can be configured, and it's important not to conflate them:
 
-## 1. Find the config file
+1. **The MCP server's own directory connection** — used by every `agntcy_dir_*`/`agntcy_oasf_*` tool call. Set via `DIRECTORY_CLIENT_*` environment variables in `mcp.json`'s `env` block. This is what to edit when the user asks to "configure dir-mcp".
+2. **The bundled `dirctl` CLI's own target server** — used only when `dirctl` itself is invoked directly (e.g. by the `dirctl-auth` skill). It has a separate config file with named contexts at `~/.config/dirctl/config.yaml`. `DIRECTORY_CLIENT_*` env vars, if set, override `dirctl`'s selected context too — so setting them once in `mcp.json`'s `env` block keeps both in sync automatically. `dirctl` contexts are only useful as an extra convenience for switching directories across plain terminal invocations of `dirctl` outside of Cursor.
 
-Resolve the active config path to an **absolute path** — do not use `~` with your file-read/file-write tools. Those tools open paths literally and do not expand `~`, so an edit "to `~/.config/dir-mcp/config.json`" can silently create a file named `~` under the current working directory instead of touching the real config. Always resolve first:
+This skill covers (1), the MCP server's own connection. See the `dirctl-auth` skill if you specifically need to manage `dirctl` contexts.
 
-```sh
-echo "${DIR_MCP_CONFIG:-$HOME/.config/dir-mcp/config.json}"
-```
-
-Use the printed absolute path (e.g. `/Users/alice/.config/dir-mcp/config.json`) for every subsequent read or edit in this skill — never the literal `~/...` string.
-
-Read it with that absolute path:
+## 1. Find the MCP config file
 
 ```sh
-cat "${DIR_MCP_CONFIG:-$HOME/.config/dir-mcp/config.json}"
+cat ~/.cursor/mcp.json 2>/dev/null || cat .cursor/mcp.json
 ```
 
-If the file does not exist, the npm wrapper creates it with defaults on first run. You can also create it manually — see the template in step 4.
+Locate the `agntcy-dir` entry's `env` block (create one if it doesn't exist yet).
 
 ## 2. Understand the options
 
@@ -43,9 +38,7 @@ If the file does not exist, the npm wrapper creates it with defaults on first ru
 | `DIRECTORY_CLIENT_TLS_CA_FILE` | _(empty)_ | CA certificate for server verification (for `tls` mode) |
 | `DIRECTORY_CLIENT_TLS_SKIP_VERIFY` | _(empty)_ | Set to `true` to skip TLS certificate verification |
 | `DIRECTORY_MCP_PATH` | _(bundled binary)_ | Absolute path to the `dir-mcp` server binary; overrides the binary bundled in the npm package |
-| `DIRECTORY_MCP_VERSION` | _(npm package version)_ | Expected `dir-mcp` server version; logged at startup for diagnostics |
 | `DIRECTORY_DIRCTL_PATH` | _(bundled binary)_ | Absolute path to the `dirctl` binary; overrides the binary bundled in the npm package |
-| `DIRECTORY_DIRCTL_VERSION` | _(empty)_ | Expected `dirctl` version (e.g. `1.6.3`); `dirctl-auth` warns if the installed version does not match |
 
 ### Auth modes
 
@@ -62,20 +55,28 @@ If the file does not exist, the npm wrapper creates it with defaults on first ru
 
 ## 3. Update a setting
 
-Edit the file directly, using the absolute path resolved in step 1 (not the literal `~/...` path — file-edit tools do not expand it, and writing to `~/...` verbatim will create an unrelated file instead of updating the real config). For example, to point to a remote Directory server with token auth:
+Edit the `env` block directly. For example, to point to a remote Directory server with token auth:
 
 ```json
 {
-  "OASF_API_VALIDATION_SCHEMA_URL": "https://schema.oasf.outshift.com",
-  "DIRECTORY_CLIENT_SERVER_ADDRESS": "dir.example.com:443",
-  "DIRECTORY_CLIENT_AUTH_MODE": "token",
-  "DIRECTORY_CLIENT_AUTH_TOKEN": "eyJhbGci..."
+  "mcpServers": {
+    "agntcy-dir": {
+      "command": "npx",
+      "args": ["-y", "@agntcy/dir-mcp"],
+      "env": {
+        "OASF_API_VALIDATION_SCHEMA_URL": "https://schema.oasf.outshift.com",
+        "DIRECTORY_CLIENT_SERVER_ADDRESS": "dir.example.com:443",
+        "DIRECTORY_CLIENT_AUTH_MODE": "token",
+        "DIRECTORY_CLIENT_AUTH_TOKEN": "eyJhbGci..."
+      }
+    }
+  }
 }
 ```
 
 Only include keys you want to override — omitted keys fall back to their defaults.
 
-After saving, the npm wrapper detects the change and restarts the MCP server automatically — no Cursor restart needed.
+**After saving, reload the MCP server** (Cursor's MCP panel, or restart Cursor). `DIRECTORY_CLIENT_*` env vars are read once at process startup — there is no watch-and-restart-on-change behavior.
 
 ## 4. Config templates
 
@@ -146,19 +147,9 @@ After saving, follow the `dirctl-auth` skill to log in — it locates the `dirct
 }
 ```
 
-## 5. Confirm the write persisted
+## 5. Verify the config is active
 
-Before relying on the change, re-read the config from the same absolute path and diff it against what you intended to write:
-
-```sh
-cat "${DIR_MCP_CONFIG:-$HOME/.config/dir-mcp/config.json}"
-```
-
-If the values don't match what you edited, the write did not land on the real file (e.g. it landed on a stray `~`-named file/dir under the current working directory) — locate and remove that stray file, then redo the edit against the resolved absolute path.
-
-## 6. Verify the config is active
-
-After updating the config, confirm the server picks it up by calling a tool that uses the setting. For the Directory server address, try a search:
+After updating the config and reloading the MCP server, confirm it picked up the change by calling a tool that uses the setting. For the Directory server address, try a search:
 
 ```
 Call agntcy_dir_search_local with limit=1
@@ -166,8 +157,33 @@ Call agntcy_dir_search_local with limit=1
 
 A successful (even empty) response confirms the client can reach the server with the configured auth.
 
+## 6. Managing `dirctl` contexts (only for direct `dirctl` invocations)
+
+If the user specifically wants a named, persistent profile for invoking the bundled `dirctl` binary directly from a terminal (outside of any `env` block), create or edit a context in `~/.config/dirctl/config.yaml`:
+
+```yaml
+current_context: my-directory
+contexts:
+  my-directory:
+    server_address: 0.0.0.0:8888
+    auth_mode: none
+  staging:
+    server_address: staging.example.com:443
+    auth_mode: oidc
+    oidc_issuer: https://idp.example.com
+    oidc_client_id: dirctl
+```
+
+Then switch between them with:
+
+```sh
+dirctl context list
+dirctl context set staging
+```
+
+**This has no effect on the MCP server's own tool calls** — only on invocations of the `dirctl` binary itself. Don't recommend it as a substitute for step 3 above.
+
 ## Tips
 
-- Environment variables and `mcp.json` `env` entries override config file values — check those first if your changes seem ignored.
-- Enable debug logging by setting `DIR_MCP_DEBUG=1` in `mcp.json` `env` to see which config values are loaded at startup.
-- The config file path itself is set via the `DIR_MCP_CONFIG` env var in `mcp.json` — change it there if you need separate configs per project.
+- Enable debug logging by setting `DIR_MCP_DEBUG=1` in `mcp.json`'s `env` block to see which resolved paths and env values the wrapper is using at startup.
+- If a setting still seems ignored after reloading, double check it's in the `agntcy-dir` server's own `env` block and not a shell environment variable that isn't inherited by Cursor's MCP process.

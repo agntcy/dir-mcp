@@ -20,12 +20,7 @@ Add to your MCP config:
 {
   "mcpServers": {
     "agntcy-dir": {
-      "command": "dir-mcp",
-      "env": {
-        "OASF_API_VALIDATION_SCHEMA_URL": "https://schema.oasf.outshift.com",
-        "DIRECTORY_CLIENT_SERVER_ADDRESS": "0.0.0.0:8888",
-        "DIRECTORY_CLIENT_AUTH_MODE": "none"
-      }
+      "command": "dir-mcp"
     }
   }
 }
@@ -38,9 +33,24 @@ Or use `npx` without a global install:
   "mcpServers": {
     "agntcy-dir": {
       "command": "npx",
-      "args": ["-y", "@agntcy/dir-mcp"],
+      "args": ["-y", "@agntcy/dir-mcp"]
+    }
+  }
+}
+```
+
+### Which directory server to talk to
+
+`dir-mcp` keeps no connection config of its own — the MCP server binary reads
+`DIRECTORY_CLIENT_*` environment variables directly (server address, auth
+mode, TLS, OIDC, tokens). Set them in the `env` block above:
+
+```json
+{
+  "mcpServers": {
+    "agntcy-dir": {
+      "command": "dir-mcp",
       "env": {
-        "OASF_API_VALIDATION_SCHEMA_URL": "https://schema.oasf.outshift.com",
         "DIRECTORY_CLIENT_SERVER_ADDRESS": "0.0.0.0:8888",
         "DIRECTORY_CLIENT_AUTH_MODE": "none"
       }
@@ -49,43 +59,66 @@ Or use `npx` without a global install:
 }
 ```
 
+**Note:** this only configures the MCP server's own tool calls. The bundled
+`dirctl` binary (this package's second CLI entry point) is a separate program
+with its own connection settings — it does **not** read the MCP server's env
+block, and the MCP server does **not** read `dirctl`'s config. If you invoke
+`dirctl` directly (e.g. `dirctl auth login`, or ad hoc `dirctl search`/`pull`),
+it resolves its target server from its own config file,
+`~/.config/dirctl/config.yaml`, which supports multiple named **contexts** —
+the same way `kubectl` owns cluster contexts:
+
+```yaml
+current_context: my-directory
+contexts:
+  my-directory:
+    server_address: 0.0.0.0:8888
+    auth_mode: none
+  staging:
+    server_address: staging.example.com:443
+    auth_mode: oidc
+    oidc_issuer: https://idp.example.com
+    oidc_client_id: dirctl
+```
+
+Switch between contexts with:
+
+```sh
+dirctl context list
+dirctl context set staging
+```
+
+See `dirctl context --help` for the full set of subcommands (`list`,
+`current`, `set`, `show`, `validate`). `DIRECTORY_CLIENT_*` env vars, if set,
+still override `dirctl`'s selected context for that invocation — so if you
+set them in the MCP server's `env` block, both the MCP server and any direct
+`dirctl` invocation you make with the same environment will target the same
+directory, without needing a context at all.
+
 ### Environment variables
 
 | Variable | Required | Description |
 |----------|----------|-------------|
-| `OASF_API_VALIDATION_SCHEMA_URL` | Yes | OASF schema server URL |
-| `DIRECTORY_CLIENT_SERVER_ADDRESS` | No | Directory server address (default `0.0.0.0:8888`) |
-| `DIRECTORY_CLIENT_AUTH_MODE` | No | Auth mode: `none`, `github`, `x509`, `jwt`, `token` |
+| `OASF_API_VALIDATION_SCHEMA_URL` | No | OASF schema server URL (defaults to the public AGNTCY schema server) |
+| `DIRECTORY_CLIENT_SERVER_ADDRESS` | No | Directory server address |
+| `DIRECTORY_CLIENT_AUTH_MODE` | No | Auth mode: `none`, `token`, `oidc`, `x509`, `jwt`, `tls` |
 | `DIRECTORY_CLIENT_AUTH_TOKEN` | No | Pre-issued bearer token for CI/scripts |
-
-## Config file
-
-Instead of setting shell environment variables, create `~/.config/dir-mcp/config.json`:
-
-```json
-{
-  "DIRECTORY_CLIENT_SERVER_ADDRESS": "0.0.0.0:8888",
-  "DIRECTORY_CLIENT_AUTH_MODE": "none",
-  "DIRECTORY_CLIENT_AUTH_TOKEN": "your-token"
-}
-```
-
-The wrapper reads this file on every startup. Process environment variables and `mcp.json` `env` entries take precedence over config file values, so they can still override individual keys.
-
-To use a different path, set `DIR_MCP_CONFIG=/path/to/config.json`. A leading
-`~` or a `$HOME`/`${HOME}` reference is expanded to the user's home
-directory — useful since MCP client configs (e.g. `mcp.json` `env` blocks)
-set environment variables directly, without a shell to expand them.
+| `DIRECTORY_CLIENT_OIDC_ISSUER` / `DIRECTORY_CLIENT_OIDC_CLIENT_ID` | No | OIDC issuer/client ID (for `oidc` mode) |
 
 ## Dependencies installation
 
 `npm install` runs a postinstall step that downloads the two binaries this
 platform needs (`mcp-server`, `dirctl`) from GitHub Releases. If you already
-have the binaries, you can set these values in the config:
+have the binaries, you can set these environment variables instead:
 
 - Set `DIR_MCP_SKIP_INSTALL=1` to skip the download during `npm install`.
 - Point `DIRECTORY_MCP_PATH` (and optionally `DIRECTORY_DIRCTL_PATH`) at
-  binaries you've placed yourself, via env var or the config file above.
+  binaries you've placed yourself.
+
+A leading `~` or a `$HOME`/`${HOME}` reference in either path is expanded to
+the user's home directory — useful since MCP client configs (e.g. `mcp.json`
+`env` blocks) set environment variables directly, without a shell to expand
+them.
 
 ## Supported platforms
 

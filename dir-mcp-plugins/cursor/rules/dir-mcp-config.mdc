@@ -1,19 +1,21 @@
 ---
-description: Guide for configuring the dir-mcp server — server address, auth mode, tokens, TLS, and OIDC settings via the config JSON file
+description: Guide for configuring the dir-mcp server — server address, auth mode, tokens, TLS, and OIDC settings via DIRECTORY_CLIENT_* env vars in mcp.json
 ---
 
 # dir-mcp Configuration
 
 When the user asks to configure dir-mcp — change the server address, set an auth token, switch auth mode, configure OIDC or TLS, or update the OASF schema URL — follow the `configure-dir-mcp` skill.
 
-## Config file location
+## No config file
 
-The active config path is `$DIR_MCP_CONFIG` if set, otherwise `~/.config/dir-mcp/config.json`. Resolve this to an absolute path (e.g. `echo "${DIR_MCP_CONFIG:-$HOME/.config/dir-mcp/config.json}"`) before reading or editing it with file tools — those tools do not expand `~`, and editing the literal `~/...` string creates a stray file instead of updating the real config.
+dir-mcp keeps no config file of its own. The MCP server reads `DIRECTORY_CLIENT_*` (and `OASF_API_VALIDATION_SCHEMA_URL`) environment variables directly, set in the `agntcy-dir` server's `env` block inside `~/.cursor/mcp.json` (global) or `.cursor/mcp.json` (per-project).
+
+The bundled `dirctl` binary additionally has its own, separate config with named contexts at `~/.config/dirctl/config.yaml` — but that only affects direct `dirctl` invocations (e.g. `dirctl auth login`), never the MCP server's own tool calls. Don't conflate the two; see the `configure-dir-mcp` skill for the distinction.
 
 ## Precedence
 
-Environment variables and `mcp.json` `env` entries take precedence over the config file. If a change to the config file seems to have no effect, check those sources first.
+`DIRECTORY_CLIENT_*` env vars set in `mcp.json`'s `env` block also override `dirctl`'s selected context when `dirctl` is invoked directly, so keeping connection settings in that one place covers both.
 
 ## After changes
 
-Changes to the config file are picked up automatically — the npm wrapper watches `config.json` and restarts the MCP server process on any change. No Cursor restart is needed.
+Unlike the old config-file design, there's no watch-and-restart-on-change. After editing `mcp.json`'s `env` block, reload the MCP server (Cursor's MCP panel, or restart Cursor) for the change to take effect.

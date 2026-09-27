@@ -53,9 +53,21 @@ The search returns `record_cids` — content identifiers you can use to fetch th
 npx -y --package=@agntcy/dir-mcp dirctl <subcommand and flags>
 ```
 
-Always spell out this full command in each call below — don't assign it to a shell variable first (e.g. `DIRCTL="npx ..."; $DIRCTL ...`); that assignment syntax is bash/zsh-only and fails outright under fish (`fish: Unsupported use of '='`), and you cannot assume which shell the Bash tool is running. This wrapper loads `~/.config/dir-mcp/config.json` (or `$DIR_MCP_CONFIG`) and merges its `DIRECTORY_CLIENT_*` settings into the environment for you, then resolves the binary itself from `DIRECTORY_DIRCTL_PATH` or its own package `bin/` directory — never from PATH. See the `dirctl-auth` skill for the full resolution details and what to do if the binary is missing.
+Always spell out this full command in each call below — don't assign it to a shell variable first (e.g. `DIRCTL="npx ..."; $DIRCTL ...`); that assignment syntax is bash/zsh-only and fails outright under fish (`fish: Unsupported use of '='`), and you cannot assume which shell the Bash tool is running. This wrapper passes any `DIRECTORY_CLIENT_*` settings from `.mcp.json`'s `env` block straight through to `dirctl` (which uses them, together with its own `~/.config/dirctl/config.yaml` context if no env vars are set, to pick a target server), and resolves the binary itself from `DIRECTORY_DIRCTL_PATH` or its own package `bin/` directory — never from PATH. See the `dirctl-auth` skill for the full resolution details and what to do if the binary is missing.
 
-### 2. Pull straight to a file, never to stdout
+### 2. Make sure dirctl is authenticated before pulling or searching
+
+Check `DIRECTORY_CLIENT_AUTH_MODE` in `.mcp.json`'s `env` block (see the `dirctl-auth` skill, step 2, for how to read it). If it's `oidc`, check whether a token is already cached:
+
+```sh
+ls ~/.config/dirctl/tokens/ 2>/dev/null
+```
+
+If that directory is empty or doesn't exist, there is no token yet — **run the `dirctl-auth` skill first** and wait for the user to complete the browser login before running any `dirctl pull`/`search` command below. Don't run those commands speculatively and only react if they fail with an auth error; check up front, since the failure path costs a wasted round trip and the login still needs the same human step either way.
+
+If a token is already cached, proceed directly to step 3. (`dirctl auth login` will also still be needed later if that cached token expires — see the Tips section below.)
+
+### 3. Pull straight to a file, never to stdout
 
 ```sh
 npx -y --package=@agntcy/dir-mcp dirctl pull <cid> --output json --output-file /tmp/record.json
@@ -63,7 +75,7 @@ npx -y --package=@agntcy/dir-mcp dirctl pull <cid> --output json --output-file /
 
 `--output-file` writes the full record to disk without ever printing it — nothing large hits a tool result at this step. (`dirctl pull` also accepts a `name:version` in place of a CID.)
 
-### 3. Extract only what you need with jq
+### 4. Extract only what you need with jq
 
 ```sh
 jq '{name, version, description, domains, locators, skills: (.skills[:10])}' /tmp/record.json
@@ -106,4 +118,4 @@ Supported `target_format` values: `a2a`, `ghcopilot`, `agentskills`.
 - Start broad (by skill or domain), then narrow with additional filters.
 - Always verify records before using them in production pipelines.
 - Use `agntcy_oasf_validate_record` on pulled records to confirm they are still schema-valid — for a `dirctl`-pulled record, pass the full file content (`$(cat /tmp/record.json)`), not the jq-filtered summary, since validation needs every field.
-- If `dirctl pull` fails with an auth error, run the `dirctl-auth` skill first — `dirctl` needs a cached token the same way the MCP server does.
+- If `dirctl pull` or `search` fails with an auth error even after step 2 found a cached token, it likely expired — run the `dirctl-auth` skill to refresh it, then retry.
