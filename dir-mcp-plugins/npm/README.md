@@ -72,7 +72,10 @@ Instead of setting shell environment variables, create `~/.config/dir-mcp/config
 
 The wrapper reads this file on every startup. Process environment variables and `mcp.json` `env` entries take precedence over config file values, so they can still override individual keys.
 
-To use a different path, set `DIR_MCP_CONFIG=/path/to/config.json`.
+To use a different path, set `DIR_MCP_CONFIG=/path/to/config.json`. A leading
+`~` or a `$HOME`/`${HOME}` reference is expanded to the user's home
+directory — useful since MCP client configs (e.g. `mcp.json` `env` blocks)
+set environment variables directly, without a shell to expand them.
 
 ## Dependencies installation
 

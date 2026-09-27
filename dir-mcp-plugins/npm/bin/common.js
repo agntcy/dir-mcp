@@ -15,9 +15,15 @@ const DEFAULT_CONFIG = {
 
 const DEFAULT_CONFIG_PATH = path.join(os.homedir(), ".config", "dir-mcp", "config.json");
 
-const configPath = path.resolve(
-  (process.env.DIR_MCP_CONFIG || DEFAULT_CONFIG_PATH).replace(/^~/, os.homedir())
-);
+// Expands a leading `~` and any `$HOME`/`${HOME}` reference to the user's home
+// directory. MCP client configs (e.g. mcp.json `env` blocks) set env vars
+// directly without going through a shell, so `$HOME` is never expanded by the
+// OS the way it would be in a shell script — we have to do it ourselves.
+function expandHome(p) {
+  return p.replace(/^~/, os.homedir()).replace(/\$\{HOME\}|\$HOME/g, os.homedir());
+}
+
+const configPath = path.resolve(expandHome(process.env.DIR_MCP_CONFIG || DEFAULT_CONFIG_PATH));
 
 // Reads the config file, creating it with DEFAULT_CONFIG values if absent.
 // Returns the parsed object, or {} on error.
@@ -68,7 +74,7 @@ function getDirctlBinaryName() {
 // Note: the returned path may not exist yet if the binary hasn't been downloaded.
 function resolveMcpServerPath(env, binDir) {
   if (env.DIRECTORY_MCP_PATH) {
-    return path.resolve(env.DIRECTORY_MCP_PATH.replace(/^~/, os.homedir()));
+    return path.resolve(expandHome(env.DIRECTORY_MCP_PATH));
   }
   return path.join(binDir, getMcpServerBinaryName());
 }
@@ -78,7 +84,7 @@ function resolveMcpServerPath(env, binDir) {
 // the bundled binary inside binDir (the npm package's own bin directory).
 function resolveDirctlPath(env, binDir) {
   if (env.DIRECTORY_DIRCTL_PATH) {
-    return path.resolve(env.DIRECTORY_DIRCTL_PATH.replace(/^~/, os.homedir()));
+    return path.resolve(expandHome(env.DIRECTORY_DIRCTL_PATH));
   }
   const name = getDirctlBinaryName();
   if (!name) return null;
@@ -89,6 +95,7 @@ function resolveDirctlPath(env, binDir) {
 module.exports = {
   DEFAULT_CONFIG,
   configPath,
+  expandHome,
   loadConfig,
   getMcpServerBinaryName,
   getDirctlBinaryName,

@@ -98,6 +98,42 @@ describe("getDirctlBinaryName", () => {
   });
 });
 
+// ─── expandHome ──────────────────────────────────────────────────────────────
+
+describe("expandHome", () => {
+  const { expandHome } = require("../bin/common.js");
+
+  it("expands a leading ~", () => {
+    assert.equal(expandHome("~/config.json"), path.join(os.homedir(), "config.json"));
+  });
+
+  it("expands $HOME", () => {
+    assert.equal(expandHome("$HOME/config.json"), path.join(os.homedir(), "config.json"));
+  });
+
+  it("expands ${HOME}", () => {
+    assert.equal(expandHome("${HOME}/config.json"), path.join(os.homedir(), "config.json"));
+  });
+
+  it("leaves a plain absolute path untouched", () => {
+    assert.equal(expandHome("/etc/dir-mcp/config.json"), "/etc/dir-mcp/config.json");
+  });
+});
+
+// ─── configPath (DIR_MCP_CONFIG) ─────────────────────────────────────────────
+
+describe("configPath", () => {
+  it("expands $HOME in DIR_MCP_CONFIG", () => {
+    const { configPath } = freshRequireCommon("$HOME/custom/config.json");
+    assert.equal(configPath, path.join(os.homedir(), "custom", "config.json"));
+  });
+
+  it("expands ~ in DIR_MCP_CONFIG", () => {
+    const { configPath } = freshRequireCommon("~/custom/config.json");
+    assert.equal(configPath, path.join(os.homedir(), "custom", "config.json"));
+  });
+});
+
 // ─── resolveMcpServerPath ────────────────────────────────────────────────────
 
 describe("resolveMcpServerPath", () => {
@@ -115,6 +151,14 @@ describe("resolveMcpServerPath", () => {
   it("expands ~ in DIRECTORY_MCP_PATH", () => {
     const result = resolveMcpServerPath(
       { DIRECTORY_MCP_PATH: "~/bin/mcp-server" },
+      BIN_DIR,
+    );
+    assert.equal(result, path.join(os.homedir(), "bin", "mcp-server"));
+  });
+
+  it("expands $HOME in DIRECTORY_MCP_PATH", () => {
+    const result = resolveMcpServerPath(
+      { DIRECTORY_MCP_PATH: "$HOME/bin/mcp-server" },
       BIN_DIR,
     );
     assert.equal(result, path.join(os.homedir(), "bin", "mcp-server"));
@@ -163,6 +207,14 @@ describe("resolveDirctlPath", () => {
   it("expands ~ in DIRECTORY_DIRCTL_PATH", () => {
     const result = resolveDirctlPath(
       { DIRECTORY_DIRCTL_PATH: "~/bin/dirctl" },
+      tmpDir,
+    );
+    assert.equal(result, path.join(os.homedir(), "bin", "dirctl"));
+  });
+
+  it("expands $HOME in DIRECTORY_DIRCTL_PATH", () => {
+    const result = resolveDirctlPath(
+      { DIRECTORY_DIRCTL_PATH: "$HOME/bin/dirctl" },
       tmpDir,
     );
     assert.equal(result, path.join(os.homedir(), "bin", "dirctl"));
