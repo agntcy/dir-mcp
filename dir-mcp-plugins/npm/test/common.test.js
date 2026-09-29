@@ -6,21 +6,6 @@ const fs = require("fs");
 const os = require("os");
 const path = require("path");
 
-// Reload common.js with DIR_MCP_CONFIG pointing at a given path, bypassing the
-// module cache so each test gets a fresh configPath binding.
-function freshRequireCommon(configFilePath) {
-  const key = require.resolve("../bin/common.js");
-  delete require.cache[key];
-  const orig = process.env.DIR_MCP_CONFIG;
-  process.env.DIR_MCP_CONFIG = configFilePath;
-  try {
-    return require("../bin/common.js");
-  } finally {
-    if (orig === undefined) delete process.env.DIR_MCP_CONFIG;
-    else process.env.DIR_MCP_CONFIG = orig;
-  }
-}
-
 // ─── getMcpServerBinaryName ──────────────────────────────────────────────────
 
 describe("getMcpServerBinaryName", () => {
@@ -98,6 +83,90 @@ describe("getDirctlBinaryName", () => {
   });
 });
 
+// ─── expandHome ──────────────────────────────────────────────────────────────
+
+describe("expandHome", () => {
+  const { expandHome } = require("../bin/common.js");
+
+  it("expands a leading ~", () => {
+    assert.equal(expandHome("~/config.json"), path.join(os.homedir(), "config.json"));
+  });
+
+  it("expands $HOME", () => {
+    assert.equal(expandHome("$HOME/config.json"), path.join(os.homedir(), "config.json"));
+  });
+
+  it("expands ${HOME}", () => {
+    assert.equal(expandHome("${HOME}/config.json"), path.join(os.homedir(), "config.json"));
+  });
+
+  it("leaves a plain absolute path untouched", () => {
+    assert.equal(expandHome("/etc/example/binary"), "/etc/example/binary");
+  });
+});
+
+// ─── resolveEnv / DEFAULT_ENV ────────────────────────────────────────────────
+//
+// dir-mcp keeps no config file of its own — which directory server/instance
+// to talk to and how to authenticate is entirely dirctl's job (its own
+// `~/.config/dirctl/config.yaml` contexts and `dirctl context` command).
+// resolveEnv only layers a small in-memory default (the OASF schema URL)
+// under whatever the process/MCP-client env already provides.
+
+describe("DEFAULT_ENV", () => {
+  const { DEFAULT_ENV } = require("../bin/common.js");
+
+  it("defaults to the public OASF schema URL", () => {
+    assert.equal(DEFAULT_ENV.OASF_API_VALIDATION_SCHEMA_URL, "https://schema.oasf.outshift.com");
+  });
+
+  it("does not carry any directory-server/instance fields — that's dirctl's job", () => {
+    for (const key of ["DIRECTORY_CLIENT_SERVER_ADDRESS", "DIRECTORY_CLIENT_AUTH_MODE", "DIRECTORY_CLIENT_AUTH_TOKEN"]) {
+      assert.ok(!(key in DEFAULT_ENV), `DEFAULT_ENV should not contain ${key}`);
+    }
+  });
+});
+
+describe("resolveEnv", () => {
+  it("applies the OASF schema URL default when unset", () => {
+    const key = require.resolve("../bin/common.js");
+    delete require.cache[key];
+    const orig = process.env.OASF_API_VALIDATION_SCHEMA_URL;
+    delete process.env.OASF_API_VALIDATION_SCHEMA_URL;
+    try {
+      const { resolveEnv } = require("../bin/common.js");
+      assert.equal(resolveEnv().OASF_API_VALIDATION_SCHEMA_URL, "https://schema.oasf.outshift.com");
+    } finally {
+      if (orig === undefined) delete process.env.OASF_API_VALIDATION_SCHEMA_URL;
+      else process.env.OASF_API_VALIDATION_SCHEMA_URL = orig;
+    }
+  });
+
+  it("lets process.env override the default", () => {
+    const orig = process.env.OASF_API_VALIDATION_SCHEMA_URL;
+    process.env.OASF_API_VALIDATION_SCHEMA_URL = "https://custom.example.com";
+    try {
+      const { resolveEnv } = require("../bin/common.js");
+      assert.equal(resolveEnv().OASF_API_VALIDATION_SCHEMA_URL, "https://custom.example.com");
+    } finally {
+      if (orig === undefined) delete process.env.OASF_API_VALIDATION_SCHEMA_URL;
+      else process.env.OASF_API_VALIDATION_SCHEMA_URL = orig;
+    }
+  });
+
+  it("passes through directory-server env vars untouched, for the mcp-server binary or dirctl to interpret", () => {
+    const orig = process.env.DIRECTORY_CLIENT_SERVER_ADDRESS;
+    process.env.DIRECTORY_CLIENT_SERVER_ADDRESS = "staging.example.com:443";
+    try {
+      const { resolveEnv } = require("../bin/common.js");
+      assert.equal(resolveEnv().DIRECTORY_CLIENT_SERVER_ADDRESS, "staging.example.com:443");
+    } finally {
+      if (orig === undefined) delete process.env.DIRECTORY_CLIENT_SERVER_ADDRESS;
+      else process.env.DIRECTORY_CLIENT_SERVER_ADDRESS = orig;
+    }
+  });
+});
+
 // ─── resolveMcpServerPath ────────────────────────────────────────────────────
 
 describe("resolveMcpServerPath", () => {
@@ -115,6 +184,14 @@ describe("resolveMcpServerPath", () => {
   it("expands ~ in DIRECTORY_MCP_PATH", () => {
     const result = resolveMcpServerPath(
       { DIRECTORY_MCP_PATH: "~/bin/mcp-server" },
+      BIN_DIR,
+    );
+    assert.equal(result, path.join(os.homedir(), "bin", "mcp-server"));
+  });
+
+  it("expands $HOME in DIRECTORY_MCP_PATH", () => {
+    const result = resolveMcpServerPath(
+      { DIRECTORY_MCP_PATH: "$HOME/bin/mcp-server" },
       BIN_DIR,
     );
     assert.equal(result, path.join(os.homedir(), "bin", "mcp-server"));
@@ -168,6 +245,14 @@ describe("resolveDirctlPath", () => {
     assert.equal(result, path.join(os.homedir(), "bin", "dirctl"));
   });
 
+  it("expands $HOME in DIRECTORY_DIRCTL_PATH", () => {
+    const result = resolveDirctlPath(
+      { DIRECTORY_DIRCTL_PATH: "$HOME/bin/dirctl" },
+      tmpDir,
+    );
+    assert.equal(result, path.join(os.homedir(), "bin", "dirctl"));
+  });
+
   it("returns the bundled binary path when it exists", () => {
     const name = getDirctlBinaryName();
     if (!name) return; // skip on unsupported platform
@@ -195,157 +280,5 @@ describe("resolveDirctlPath", () => {
 
     const result = resolveDirctlPath({}, tmpDir);
     assert.equal(result, null);
-  });
-});
-
-// ─── loadConfig ──────────────────────────────────────────────────────────────
-
-describe("loadConfig", () => {
-  let tmpDir;
-  let tmpConfig;
-  const noop = () => {};
-
-  beforeEach(() => {
-    tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), "dir-mcp-cfg-test-"));
-    tmpConfig = path.join(tmpDir, "config.json");
-  });
-
-  afterEach(() => {
-    fs.rmSync(tmpDir, { recursive: true, force: true });
-    // Evict common.js from cache so the next test gets a fresh configPath.
-    const key = require.resolve("../bin/common.js");
-    delete require.cache[key];
-  });
-
-  it("creates a default config file when none exists and returns the defaults", () => {
-    const { loadConfig, DEFAULT_CONFIG } = freshRequireCommon(tmpConfig);
-
-    assert.ok(!fs.existsSync(tmpConfig), "pre-condition: file must not exist yet");
-
-    const cfg = loadConfig(noop);
-
-    assert.ok(fs.existsSync(tmpConfig), "config file was not created");
-    assert.deepEqual(cfg, DEFAULT_CONFIG);
-  });
-
-  it("writes a valid JSON file with all DEFAULT_CONFIG keys", () => {
-    const { loadConfig, DEFAULT_CONFIG } = freshRequireCommon(tmpConfig);
-    loadConfig(noop);
-
-    const written = JSON.parse(fs.readFileSync(tmpConfig, "utf8"));
-    assert.deepEqual(Object.keys(written).sort(), Object.keys(DEFAULT_CONFIG).sort());
-  });
-
-  it("reads and returns an existing config file unchanged", () => {
-    const custom = {
-      OASF_API_VALIDATION_SCHEMA_URL: "https://my-schema.example.com",
-      DIRECTORY_CLIENT_SERVER_ADDRESS: "127.0.0.1:9999",
-      DIRECTORY_CLIENT_AUTH_MODE: "token",
-      DIRECTORY_CLIENT_AUTH_TOKEN: "secret",
-      DIRECTORY_MCP_PATH: "/opt/mcp-server",
-      DIRECTORY_DIRCTL_PATH: "/opt/dirctl",
-    };
-    fs.writeFileSync(tmpConfig, JSON.stringify(custom), "utf8");
-
-    const { loadConfig } = freshRequireCommon(tmpConfig);
-    const cfg = loadConfig(noop);
-
-    assert.deepEqual(cfg, custom);
-  });
-
-  it("does not overwrite an existing config file", () => {
-    const original = { MY_CUSTOM_KEY: "preserved" };
-    fs.writeFileSync(tmpConfig, JSON.stringify(original), "utf8");
-
-    const { loadConfig } = freshRequireCommon(tmpConfig);
-    loadConfig(noop);
-
-    const after = JSON.parse(fs.readFileSync(tmpConfig, "utf8"));
-    assert.deepEqual(after, original);
-  });
-
-  it("returns {} when the config file contains invalid JSON", () => {
-    fs.writeFileSync(tmpConfig, "not { json }", "utf8");
-
-    const { loadConfig } = freshRequireCommon(tmpConfig);
-    const cfg = loadConfig(noop);
-
-    assert.deepEqual(cfg, {});
-  });
-
-  it("returns {} when the config file is empty", () => {
-    fs.writeFileSync(tmpConfig, "", "utf8");
-
-    const { loadConfig } = freshRequireCommon(tmpConfig);
-    const cfg = loadConfig(noop);
-
-    assert.deepEqual(cfg, {});
-  });
-
-  it("calls the log function when creating the default config", () => {
-    const { loadConfig } = freshRequireCommon(tmpConfig);
-    const messages = [];
-    loadConfig((msg) => messages.push(msg));
-
-    assert.ok(messages.some((m) => m.includes("created default config")),
-      `Expected a "created default config" log; got: ${JSON.stringify(messages)}`);
-  });
-
-  it("calls the log function with a warning when config contains invalid JSON", () => {
-    fs.writeFileSync(tmpConfig, "{ bad json", "utf8");
-
-    const { loadConfig } = freshRequireCommon(tmpConfig);
-    const messages = [];
-    loadConfig((msg) => messages.push(msg));
-
-    assert.ok(messages.some((m) => m.includes("warning")),
-      `Expected a warning log; got: ${JSON.stringify(messages)}`);
-  });
-
-  it("returns a partial config when the file contains only some keys", () => {
-    const partial = { OASF_API_VALIDATION_SCHEMA_URL: "https://partial.example.com" };
-    fs.writeFileSync(tmpConfig, JSON.stringify(partial), "utf8");
-
-    const { loadConfig } = freshRequireCommon(tmpConfig);
-    const cfg = loadConfig(noop);
-
-    assert.equal(cfg.OASF_API_VALIDATION_SCHEMA_URL, "https://partial.example.com");
-    assert.equal(Object.keys(cfg).length, 1);
-  });
-});
-
-// ─── DEFAULT_CONFIG ──────────────────────────────────────────────────────────
-
-describe("DEFAULT_CONFIG", () => {
-  const { DEFAULT_CONFIG } = require("../bin/common.js");
-
-  it("contains all required keys", () => {
-    const requiredKeys = [
-      "OASF_API_VALIDATION_SCHEMA_URL",
-      "DIRECTORY_CLIENT_SERVER_ADDRESS",
-      "DIRECTORY_CLIENT_AUTH_MODE",
-      "DIRECTORY_CLIENT_AUTH_TOKEN",
-      "DIRECTORY_MCP_PATH",
-      "DIRECTORY_DIRCTL_PATH",
-    ];
-    for (const key of requiredKeys) {
-      assert.ok(key in DEFAULT_CONFIG, `Missing key: ${key}`);
-    }
-  });
-
-  it("defaults to the public OASF schema URL", () => {
-    assert.equal(
-      DEFAULT_CONFIG.OASF_API_VALIDATION_SCHEMA_URL,
-      "https://schema.oasf.outshift.com",
-    );
-  });
-
-  it("defaults auth mode to 'none'", () => {
-    assert.equal(DEFAULT_CONFIG.DIRECTORY_CLIENT_AUTH_MODE, "none");
-  });
-
-  it("defaults binary override paths to empty strings", () => {
-    assert.equal(DEFAULT_CONFIG.DIRECTORY_MCP_PATH, "");
-    assert.equal(DEFAULT_CONFIG.DIRECTORY_DIRCTL_PATH, "");
   });
 });

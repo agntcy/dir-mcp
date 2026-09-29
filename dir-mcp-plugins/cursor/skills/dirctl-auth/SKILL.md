@@ -11,38 +11,27 @@ Use this skill to log in to the AGNTCY Directory instance that dir-mcp is config
 
 **Do not scan PATH or the filesystem for `dirctl`.** The only two accepted sources are:
 
-1. **Config file** — `DIRECTORY_DIRCTL_PATH` in `~/.config/dir-mcp/config.json` (or `$DIR_MCP_CONFIG`)
+1. **`DIRECTORY_DIRCTL_PATH`** — set in `mcp.json`'s `env` block for the `agntcy-dir` server
 2. **Bundled binary** — `DIRECTORY_DIRCTL_PATH` injected by the npm wrapper at startup (set automatically to the binary downloaded alongside the MCP server)
 
-Read the resolved value from the environment or config:
+Read the resolved value from the environment:
 
 ```sh
-DIR_MCP_CONFIG_PATH="${DIR_MCP_CONFIG:-$HOME/.config/dir-mcp/config.json}"
-DIRCTL="${DIRCTL:-${DIRECTORY_DIRCTL_PATH:-$(python3 -c "import sys,json; print(json.load(open('$DIR_MCP_CONFIG_PATH')).get('DIRECTORY_DIRCTL_PATH',''))" 2>/dev/null)}}"
+printenv DIRECTORY_DIRCTL_PATH
 ```
 
 If the value is empty or the file at that path does not exist, stop and ask the user:
 
-> `DIRECTORY_DIRCTL_PATH` is not set or points to a missing file. Set it in `~/.config/dir-mcp/config.json` to the bundled binary path (printed by the npm wrapper at startup with `DIR_MCP_DEBUG=1`) or to a manually installed `dirctl` binary. Do not add `dirctl` to PATH — use the config key instead.
+> `DIRECTORY_DIRCTL_PATH` is not set or points to a missing file. Set it in `mcp.json`'s `env` block to the bundled binary path (printed by the npm wrapper at startup with `DIR_MCP_DEBUG=1`) or to a manually installed `dirctl` binary. Do not add `dirctl` to PATH — use the env var instead.
 
 Use the resolved path in all subsequent commands by substituting it for `dirctl`.
 
-If `DIRECTORY_DIRCTL_VERSION` is set in the config, verify the installed binary matches:
+## 2. Read the active connection settings
+
+`dirctl` resolves its target server the same way the MCP server does: `DIRECTORY_CLIENT_*` environment variables set in `mcp.json`'s `env` block, which override any `dirctl` context. Read the `agntcy-dir` server's `env` block:
 
 ```sh
-<dirctl> version
-```
-
-If the version does not match `DIRECTORY_DIRCTL_VERSION`, warn the user:
-
-> The installed `dirctl` version does not match the expected version in the config (`DIRECTORY_DIRCTL_VERSION`). Proceed with caution or install the expected version.
-
-## 2. Read the active dir-mcp config
-
-Resolve and read the config file to determine which Directory instance is being used. Use `$DIR_MCP_CONFIG_PATH` (resolved above) rather than the literal `~/...` path — file tools do not expand `~`, and any edit driven by this skill (e.g. via the `configure-dir-mcp` skill) must target this resolved absolute path or it will silently miss the real config:
-
-```sh
-cat "$DIR_MCP_CONFIG_PATH"
+cat ~/.cursor/mcp.json 2>/dev/null || cat .cursor/mcp.json
 ```
 
 Note the values of:
@@ -51,29 +40,43 @@ Note the values of:
 - `DIRECTORY_CLIENT_OIDC_CLIENT_ID` — the OIDC client ID
 - `DIRECTORY_CLIENT_AUTH_MODE` — must be `oidc` for interactive login
 
+If none of these env vars are set, `dirctl` falls back to its own config at `~/.config/dirctl/config.yaml` — check `current_context` there (or `dirctl context show`) instead.
+
 If `DIRECTORY_CLIENT_AUTH_MODE` is not `oidc`, tell the user:
 
-> The current auth mode is `<mode>`. Interactive login via `dirctl auth login` only applies to `oidc` mode. To switch, update `DIRECTORY_CLIENT_AUTH_MODE` to `oidc` in the config and set `DIRECTORY_CLIENT_OIDC_ISSUER` and `DIRECTORY_CLIENT_OIDC_CLIENT_ID`. Use the `configure-dir-mcp` skill for guidance.
-
-If the config file does not exist, show the user the OIDC template from the `configure-dir-mcp` skill and ask them to create it before continuing.
+> The current auth mode is `<mode>`. Interactive login via `dirctl auth login` only applies to `oidc` mode. To switch, update `DIRECTORY_CLIENT_AUTH_MODE` to `oidc` in `mcp.json`'s `env` block and set `DIRECTORY_CLIENT_OIDC_ISSUER` and `DIRECTORY_CLIENT_OIDC_CLIENT_ID`. Use the `configure-dir-mcp` skill for guidance.
 
 ## 3. Run the login flow
 
-Pass the issuer and client ID from the config explicitly so the login targets the correct Directory:
+**Always use the browser flow — never `--no-browser`.** OIDC login is a PKCE flow that requires a human to authenticate in a real browser session (enter credentials, approve consent, complete MFA); it cannot be finished by this skill on its own, no matter what flags or endpoints are tried. Do not reach for `--no-browser` as a way to "handle" login yourself — it does not let you complete the flow, it only relocates the same manual step to a URL the user still has to open and finish by hand. Use it only in the rare case where step 5 below confirms no local browser could launch at all, and even then the user — not this skill — must open the printed URL and complete login.
+
+Pass the issuer, client ID, and server address explicitly so the login targets the correct Directory:
 
 ```sh
 dirctl auth login \
   --oidc-issuer "$DIRECTORY_CLIENT_OIDC_ISSUER" \
-  --oidc-client-id "$DIRECTORY_CLIENT_OIDC_CLIENT_ID"
+  --oidc-client-id "$DIRECTORY_CLIENT_OIDC_CLIENT_ID" \
+  --server-addr "$DIRECTORY_CLIENT_SERVER_ADDRESS"
 ```
 
-If the config does not have separate issuer/client-id fields (older configs may rely on dirctl's own defaults), run without flags:
+For the public AGNTCY Directory specifically, this is:
+
+```sh
+dirctl auth login \
+  --oidc-issuer "https://idp.ads.outshift.io" \
+  --oidc-client-id "dirctl" \
+  --server-addr "ads.outshift.io:443"
+```
+
+If none of these are set (relying on a `dirctl` context instead), run without flags:
 
 ```sh
 dirctl auth login
 ```
 
-The command opens a browser window. Tell the user to complete the login there. Once complete, the token is cached at `~/.config/dirctl/tokens/`.
+Do not guess at the issuer, client ID, or server address, and do not retry the command against different candidate values hoping one works (e.g. alternating between endpoint guesses). If step 2 didn't yield a definite value, stop and ask the user for the correct one instead of trying multiple endpoints in a loop.
+
+The command opens a browser window and then blocks, waiting for the login to complete — this is expected. Tell the user a browser window has opened and ask them to complete the login there; do not treat the command as stuck or try to route around it while it's waiting. Once the user confirms they've finished, or the command returns, the token is cached at `~/.config/dirctl/tokens/`.
 
 ## 4. Verify the token was cached
 
@@ -93,9 +96,9 @@ A successful output (exit 0) confirms authentication is active.
 
 ## 5. Confirm the MCP server will pick it up
 
-The dir-mcp server reads the cached token from `~/.config/dirctl/tokens/` at startup when `DIRECTORY_CLIENT_AUTH_MODE` is `oidc`. If the server is already running, tell the user:
+The dir-mcp server reads the cached token from `~/.config/dirctl/tokens/` at startup when `DIRECTORY_CLIENT_AUTH_MODE` is `oidc` and `DIRECTORY_CLIENT_OIDC_ISSUER` matches. If the server is already running, tell the user:
 
-> Restart Cursor (or reload the MCP server) so dir-mcp picks up the new token.
+> Reload the MCP server in Cursor (or restart Cursor) so dir-mcp picks up the new token.
 
 Then ask the user to call a Directory tool to verify end-to-end connectivity:
 
@@ -109,8 +112,8 @@ A successful (even empty) response confirms the MCP server is authenticated.
 
 | Symptom | Fix |
 |---------|-----|
-| `DIRECTORY_DIRCTL_PATH` empty or missing | Set it in `~/.config/dir-mcp/config.json` to the bundled binary path or a manually installed binary; never use PATH |
-| Browser does not open | Run `dirctl auth login --no-browser` and follow the printed URL manually |
+| `DIRECTORY_DIRCTL_PATH` empty or missing | Set it in `mcp.json`'s `env` block to the bundled binary path or a manually installed binary; never use PATH |
+| Browser does not open | Run `dirctl auth login --no-browser`, then give the user the printed URL — the user, not this skill, must open it and complete login manually |
 | `dirctl auth status` fails | Re-run `dirctl auth login`; the cached token may have expired |
-| MCP tools still fail after login | Check that `DIRECTORY_CLIENT_AUTH_MODE` is `oidc` in the config; the wrapper restarts automatically on config change, but token pickup requires a full server restart — reload via Cursor's MCP panel |
-| Token cached but server rejects it | Confirm `DIRECTORY_CLIENT_SERVER_ADDRESS` and `DIRECTORY_CLIENT_OIDC_ISSUER` match the intended Directory instance |
+| MCP tools still fail after login | Check that `DIRECTORY_CLIENT_AUTH_MODE` is `oidc` in `mcp.json`'s `env` block, then reload the MCP server via Cursor's MCP panel — token pickup requires a full server restart |
+| Token cached but server rejects it | Confirm `DIRECTORY_CLIENT_SERVER_ADDRESS` and `DIRECTORY_CLIENT_OIDC_ISSUER` match the intended Directory instance in both `mcp.json` and (if used) the active `dirctl` context |

@@ -25,14 +25,14 @@ Cursor plugin for the [AGNTCY Agent Directory](https://github.com/agntcy/dir-mcp
 
 | Skill | Purpose |
 |-------|---------|
-| `configure-dir-mcp` | View and update the dir-mcp config file through chat — server address, auth mode, tokens, TLS, OIDC |
+| `configure-dir-mcp` | View and manage the `dirctl` context dir-mcp uses through chat — server address, auth mode, tokens, TLS, OIDC |
 | `dirctl-auth` | Authenticate with the Directory using the bundled `dirctl` binary via browser-based PKCE login |
 
 **Rules** (applied automatically):
 
 | Rule | Triggers when… |
 |------|----------------|
-| `dir-mcp-config` | The user asks about server address, auth, or runtime settings |
+| `dir-mcp-config` | The user asks about server address, auth, or which directory instance is active |
 | `dirctl-auth` | The user asks to log in, get a token, or fix auth errors from MCP tools |
 
 ## Prerequisites
@@ -48,29 +48,31 @@ Install from the Cursor Marketplace. The plugin downloads the platform-specific 
 
 ## Configuration
 
-The MCP server reads its settings from `~/.config/dir-mcp/config.json`. Use the `configure-dir-mcp` skill to update it through chat. The server restarts automatically whenever the file changes — no Cursor reload needed.
+The MCP server has no config file of its own — which directory server it talks to (address, auth mode, TLS, OIDC, ...) is entirely owned by the bundled `dirctl` binary's own **contexts**, the same way `kubectl` owns cluster contexts. Contexts live in `~/.config/dirctl/config.yaml` and are read directly by both `dirctl` and the MCP server binary — switching the active context (or setting `DIRECTORY_CLIENT_CONTEXT`) takes effect immediately, no restart-on-config-change machinery involved.
 
-Key settings:
+Use the `configure-dir-mcp` skill to create and switch contexts through chat.
 
-| Key | Purpose |
-|-----|---------|
-| `DIRECTORY_CLIENT_SERVER_ADDRESS` | Directory server host:port |
-| `DIRECTORY_CLIENT_AUTH_MODE` | Auth mode (`none`, `token`, `oidc`, `tls`, …) |
+Relevant environment variables (set in `mcp.json`'s `env` block if needed):
+
+| Variable | Purpose |
+|----------|---------|
+| `OASF_API_VALIDATION_SCHEMA_URL` | OASF schema server URL (defaults to the public AGNTCY schema server) |
+| `DIRECTORY_CLIENT_CONTEXT` | Name of the `dirctl` context to use, overriding its `current_context` |
+| `DIRECTORY_CLIENT_SERVER_ADDRESS` | One-off override of the directory server address on top of the selected context |
+| `DIRECTORY_CLIENT_AUTH_MODE` | One-off override of the auth mode (`none`, `token`, `oidc`, `tls`, …) |
 | `DIRECTORY_MCP_PATH` | Override the bundled MCP server binary |
-| `DIRECTORY_MCP_VERSION` | Expected MCP server version |
 | `DIRECTORY_DIRCTL_PATH` | Override the bundled `dirctl` binary |
-| `DIRECTORY_DIRCTL_VERSION` | Expected `dirctl` version |
 
-See the `configure-dir-mcp` skill for the full option reference and ready-to-paste config templates.
+See the `configure-dir-mcp` skill for the full context reference and ready-to-paste templates.
 
 ## Authentication
 
-For Directory instances that require OIDC login, use the `dirctl-auth` skill. It reads `DIRECTORY_DIRCTL_PATH` from the config (set automatically to the bundled binary) and runs the browser-based login flow. No PATH setup required.
+For Directory instances that require OIDC login, use the `dirctl-auth` skill. It resolves the bundled `dirctl` binary (never PATH) and runs the browser-based login flow against the active context.
 
 ## Quick start
 
 1. Install the plugin from the Cursor Marketplace.
-2. Ask Cursor: *"configure dir-mcp"* — the skill walks you through the config file.
+2. Ask Cursor: *"configure dir-mcp"* — the skill walks you through setting up a `dirctl` context.
 3. If your Directory requires login, ask: *"authenticate with dirctl"*.
 4. Open a project and ask Cursor to create an OASF record for it.
 

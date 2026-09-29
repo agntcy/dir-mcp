@@ -24,11 +24,11 @@ Cursor plugin for the [AGNTCY Agent Directory](https://github.com/agntcy/dir-mcp
 **Skills:**
 - `create-oasf-record` — Generate, validate, and publish a record for any codebase
 - `search-agents` — Discover agents and verify their authenticity
-- `configure-dir-mcp` — View and update the dir-mcp config JSON through chat (server address, auth mode, tokens, TLS, OIDC)
+- `configure-dir-mcp` — View and manage the directory server(s) dir-mcp talks to through chat, via `dirctl` contexts (server address, auth mode, tokens, TLS, OIDC)
 
 **Rules:**
 - `oasf-records` — Best practices applied automatically when working with OASF records
-- `dir-mcp-config` — Guides configuration of the dir-mcp runtime settings when asked
+- `dir-mcp-config` — Guides configuration of the `dirctl` context dir-mcp uses when asked
 
 ## Prerequisites
 
@@ -45,7 +45,7 @@ On first run `npx` downloads the `@agntcy/dir-mcp` package, which fetches the pl
 
 ## Configuration
 
-Use the `configure-dir-mcp` skill to set up the server through chat. It walks you through the config file at `~/.config/dir-mcp/config.json` with ready-to-paste templates for common setups: local/no-auth, remote with bearer token, OIDC, and mutual TLS.
+Use the `configure-dir-mcp` skill to set up the server through chat. It walks you through creating and switching `dirctl` contexts (server address, auth mode, tokens, TLS, OIDC) at `~/.config/dirctl/config.yaml`, with ready-to-paste templates for common setups: local/no-auth, remote with bearer token, OIDC, and mutual TLS.
 
 ## Quick start
 

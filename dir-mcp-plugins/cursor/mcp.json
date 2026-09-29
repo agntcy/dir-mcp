@@ -5,10 +5,7 @@
       "args": [
         "-y",
         "@agntcy/dir-mcp"
-      ],
-      "env": {
-        "DIR_MCP_CONFIG": "$HOME/.config/dir-mcp/config.json"
-      }
+      ]
     }
   }
 }

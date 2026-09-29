@@ -8,7 +8,11 @@ When the user asks to log in to the Directory, authenticate with dirctl, get a t
 
 ## Binary lookup
 
-Never run `which dirctl` or scan PATH. The binary must come from `DIRECTORY_DIRCTL_PATH` in the config or the bundled binary set by the npm wrapper. If neither is available, instruct the user to set `DIRECTORY_DIRCTL_PATH` in the config.
+Never run `which dirctl` or scan PATH. The binary must come from `DIRECTORY_DIRCTL_PATH` in `mcp.json`'s `env` block or the bundled binary set by the npm wrapper. If neither is available, instruct the user to set `DIRECTORY_DIRCTL_PATH` there.
+
+## Login always requires the browser
+
+`dirctl auth login` always uses the browser-based PKCE flow — never add `--no-browser` to try to complete login yourself. Logging in requires a human to authenticate in a real browser session; no combination of flags or endpoints lets this be finished without the user. Tell the user a browser window has opened and wait for them to complete it there.
 
 ## When to trigger
 

@@ -3,18 +3,14 @@
 
 const { spawn } = require("child_process");
 const fs = require("fs");
-const path = require("path");
-const { configPath, loadConfig, getDirctlBinaryName, resolveDirctlPath } = require("./common");
+const { resolveEnv, getDirctlBinaryName, resolveDirctlPath } = require("./common");
 
 const DEBUG = !!process.env.DIR_MCP_DEBUG;
 const log = (msg) => process.stderr.write(`[dirctl] ${msg}\n`);
 const debug = (msg) => { if (DEBUG) log(msg); };
 
 if (require.main === module) {
-  const config = loadConfig(log);
-  const env = { ...config, ...process.env };
-  debug(`config path: ${configPath}`);
-  debug(`config keys applied: ${Object.keys(config).join(", ") || "none"}`);
+  const env = resolveEnv();
 
   const binaryPath = resolveDirctlPath(env, __dirname);
   debug(`resolved dirctl: ${binaryPath}`);

@@ -59,40 +59,18 @@ function writeFakeBinary(dir, lines) {
   return p;
 }
 
-// Minimal env that routes the config file to a temp directory so tests never
-// touch ~/.config/dir-mcp/.
-function cfgEnv(tmpDir) {
-  return { DIR_MCP_CONFIG: path.join(tmpDir, "config.json") };
-}
-
 // ---------------------------------------------------------------------------
 // Fixtures
 // ---------------------------------------------------------------------------
 
 describe("dir-mcp.js", () => {
-  let tmpCfg;  // temp dir for config
   let tmpBin;  // temp dir for fake binaries
 
   beforeEach(() => {
-    tmpCfg = fs.mkdtempSync(path.join(os.tmpdir(), "dmcp-cfg-"));
     tmpBin = fs.mkdtempSync(path.join(os.tmpdir(), "dmcp-bin-"));
-    // Pre-create the config file so loadConfig() never writes to the watched
-    // directory during the test run.  Without this, the config.json creation
-    // fires a delayed FSEvents notification that triggers a spurious
-    // config-reload restart, which then swallows the binary's exit code and
-    // hangs the process.
-    fs.writeFileSync(path.join(tmpCfg, "config.json"), JSON.stringify({
-      OASF_API_VALIDATION_SCHEMA_URL: "https://schema.oasf.outshift.com",
-      DIRECTORY_CLIENT_SERVER_ADDRESS: "0.0.0.0:8888",
-      DIRECTORY_CLIENT_AUTH_MODE: "none",
-      DIRECTORY_CLIENT_AUTH_TOKEN: "",
-      DIRECTORY_MCP_PATH: "",
-      DIRECTORY_DIRCTL_PATH: "",
-    }, null, 2));
   });
 
   afterEach(() => {
-    fs.rmSync(tmpCfg, { recursive: true, force: true });
     fs.rmSync(tmpBin, { recursive: true, force: true });
   });
 
@@ -104,7 +82,6 @@ describe("dir-mcp.js", () => {
     it("exits 1 and logs an error when DIRECTORY_MCP_PATH points to a missing file", async () => {
       const missing = path.join(tmpBin, "no-such-server");
       const { code, stderr } = await runWrapper({
-        ...cfgEnv(tmpCfg),
         DIRECTORY_MCP_PATH: missing,
       });
 
@@ -118,7 +95,6 @@ describe("dir-mcp.js", () => {
     it("error message includes the resolved path", async () => {
       const missing = path.join(tmpBin, "no-such-server");
       const { stderr } = await runWrapper({
-        ...cfgEnv(tmpCfg),
         DIRECTORY_MCP_PATH: missing,
       });
 
@@ -134,7 +110,6 @@ describe("dir-mcp.js", () => {
       fs.chmodSync(binaryPath, 0o644);
 
       const { code } = await runWrapper({
-        ...cfgEnv(tmpCfg),
         DIRECTORY_MCP_PATH: binaryPath,
       });
 
@@ -151,7 +126,7 @@ describe("dir-mcp.js", () => {
       }
 
       // No DIRECTORY_MCP_PATH set, no bundled binary → wrapper must error.
-      const { code, stderr } = await runWrapper(cfgEnv(tmpCfg));
+      const { code, stderr } = await runWrapper({});
 
       assert.equal(code, 1);
       assert.ok(
@@ -173,7 +148,6 @@ describe("dir-mcp.js", () => {
       ]);
 
       const { code, stdout } = await runWrapper({
-        ...cfgEnv(tmpCfg),
         DIRECTORY_MCP_PATH: binaryPath,
       });
 
@@ -191,7 +165,6 @@ describe("dir-mcp.js", () => {
       ]);
 
       const { code, stderr } = await runWrapper({
-        ...cfgEnv(tmpCfg),
         DIRECTORY_MCP_PATH: binaryPath,
       });
 
@@ -209,7 +182,6 @@ describe("dir-mcp.js", () => {
       ]);
 
       const { stdout } = await runWrapper({
-        ...cfgEnv(tmpCfg),
         DIRECTORY_MCP_PATH: binaryPath,
       });
 
@@ -223,7 +195,6 @@ describe("dir-mcp.js", () => {
       ]);
 
       const { code, stderr } = await runWrapper({
-        ...cfgEnv(tmpCfg),
         DIRECTORY_MCP_PATH: binaryPath,
       });
 
@@ -243,7 +214,6 @@ describe("dir-mcp.js", () => {
       ]);
 
       const { stdout } = await runWrapper({
-        ...cfgEnv(tmpCfg),
         DIRECTORY_MCP_PATH: binaryPath,
       });
 
@@ -260,7 +230,6 @@ describe("dir-mcp.js", () => {
       ]);
 
       const { stdout, stderr } = await runWrapper({
-        ...cfgEnv(tmpCfg),
         DIRECTORY_MCP_PATH: binaryPath,
       });
 
@@ -285,7 +254,6 @@ describe("dir-mcp.js", () => {
       const binaryPath = writeFakeBinary(tmpBin, ["process.exit(0);"]);
 
       const { code } = await runWrapper({
-        ...cfgEnv(tmpCfg),
         DIRECTORY_MCP_PATH: binaryPath,
       });
 
@@ -296,7 +264,6 @@ describe("dir-mcp.js", () => {
       const binaryPath = writeFakeBinary(tmpBin, ["process.exit(42);"]);
 
       const { code } = await runWrapper({
-        ...cfgEnv(tmpCfg),
         DIRECTORY_MCP_PATH: binaryPath,
       });
 
@@ -322,7 +289,7 @@ describe("dir-mcp.js", () => {
       ]);
 
       const { code, stdout } = await runWrapper(
-        { ...cfgEnv(tmpCfg), DIRECTORY_MCP_PATH: binaryPath },
+        { DIRECTORY_MCP_PATH: binaryPath },
         { input: "hello from stdin\n" },
       );
 
@@ -346,7 +313,7 @@ describe("dir-mcp.js", () => {
       const initRequest = JSON.stringify({ jsonrpc: "2.0", id: 1, method: "initialize", params: {} });
 
       const { code, stdout } = await runWrapper(
-        { ...cfgEnv(tmpCfg), DIRECTORY_MCP_PATH: binaryPath },
+        { DIRECTORY_MCP_PATH: binaryPath },
         { input: initRequest + "\n" },
       );
 
@@ -369,7 +336,6 @@ describe("dir-mcp.js", () => {
       ]);
 
       const { code, stdout } = await runWrapper({
-        ...cfgEnv(tmpCfg),
         DIRECTORY_MCP_PATH: binaryPath,
       });
 
@@ -378,18 +344,7 @@ describe("dir-mcp.js", () => {
       assert.equal(v, binaryPath);
     });
 
-    it("merges config file values into the binary's environment", async () => {
-      const configFile = path.join(tmpCfg, "config.json");
-      fs.mkdirSync(tmpCfg, { recursive: true });
-      fs.writeFileSync(configFile, JSON.stringify({
-        OASF_API_VALIDATION_SCHEMA_URL: "https://custom.example.com",
-        DIRECTORY_CLIENT_SERVER_ADDRESS: "0.0.0.0:8888",
-        DIRECTORY_CLIENT_AUTH_MODE: "none",
-        DIRECTORY_CLIENT_AUTH_TOKEN: "",
-        DIRECTORY_MCP_PATH: "",
-        DIRECTORY_DIRCTL_PATH: "",
-      }));
-
+    it("applies the OASF schema URL default when the caller doesn't set one", async () => {
       const binaryPath = writeFakeBinary(tmpBin, [
         'const v = process.env.OASF_API_VALIDATION_SCHEMA_URL || "";',
         'process.stdout.write(JSON.stringify({ v }) + "\\n");',
@@ -397,23 +352,15 @@ describe("dir-mcp.js", () => {
       ]);
 
       const { code, stdout } = await runWrapper({
-        DIR_MCP_CONFIG: configFile,
         DIRECTORY_MCP_PATH: binaryPath,
       });
 
       assert.equal(code, 0);
       const { v } = JSON.parse(stdout.trim());
-      assert.equal(v, "https://custom.example.com");
+      assert.equal(v, "https://schema.oasf.outshift.com");
     });
 
-    it("process.env values override config file values in the binary's environment", async () => {
-      const configFile = path.join(tmpCfg, "config.json");
-      fs.mkdirSync(tmpCfg, { recursive: true });
-      fs.writeFileSync(configFile, JSON.stringify({
-        OASF_API_VALIDATION_SCHEMA_URL: "https://config-value.example.com",
-        DIRECTORY_MCP_PATH: "",
-      }));
-
+    it("lets an env var override the OASF schema URL default", async () => {
       const binaryPath = writeFakeBinary(tmpBin, [
         'const v = process.env.OASF_API_VALIDATION_SCHEMA_URL || "";',
         'process.stdout.write(JSON.stringify({ v }) + "\\n");',
@@ -421,15 +368,30 @@ describe("dir-mcp.js", () => {
       ]);
 
       const { code, stdout } = await runWrapper({
-        DIR_MCP_CONFIG: configFile,
         DIRECTORY_MCP_PATH: binaryPath,
-        // This env var overrides the config file value.
         OASF_API_VALIDATION_SCHEMA_URL: "https://env-override.example.com",
       });
 
       assert.equal(code, 0);
       const { v } = JSON.parse(stdout.trim());
       assert.equal(v, "https://env-override.example.com");
+    });
+
+    it("forwards DIRECTORY_CLIENT_* env vars straight through to the mcp-server binary unmodified", async () => {
+      const binaryPath = writeFakeBinary(tmpBin, [
+        'const v = process.env.DIRECTORY_CLIENT_SERVER_ADDRESS || "";',
+        'process.stdout.write(JSON.stringify({ v }) + "\\n");',
+        "process.exit(0);",
+      ]);
+
+      const { code, stdout } = await runWrapper({
+        DIRECTORY_MCP_PATH: binaryPath,
+        DIRECTORY_CLIENT_SERVER_ADDRESS: "staging.example.com:443",
+      });
+
+      assert.equal(code, 0);
+      const { v } = JSON.parse(stdout.trim());
+      assert.equal(v, "staging.example.com:443");
     });
 
     it("sets DIRECTORY_DIRCTL_PATH in the binary's env when dirctl is found", async () => {
@@ -448,7 +410,6 @@ describe("dir-mcp.js", () => {
       ]);
 
       const { code, stdout } = await runWrapper({
-        ...cfgEnv(tmpCfg),
         DIRECTORY_MCP_PATH: binaryPath,
         DIRECTORY_DIRCTL_PATH: dirctlPath,
       });
@@ -467,7 +428,6 @@ describe("dir-mcp.js", () => {
     it("uses [dir-mcp] prefix for its own log messages", async () => {
       const missing = path.join(tmpBin, "no-such-server");
       const { stderr } = await runWrapper({
-        ...cfgEnv(tmpCfg),
         DIRECTORY_MCP_PATH: missing,
       });
 
