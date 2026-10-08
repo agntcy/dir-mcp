@@ -7,6 +7,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"io"
 	"log"
 	"os"
 	"os/signal"
@@ -51,6 +52,8 @@ func Serve(ctx context.Context) error {
 	// the real stdout for the protocol and send everything else to stderr.
 	mcpStdout := os.Stdout
 	os.Stdout = os.Stderr
+
+	defer func() { os.Stdout = mcpStdout }()
 
 	// The Directory libraries' logger (which backs the std log package) was
 	// bound to the original stdout at init, so redirect it explicitly.
@@ -493,9 +496,17 @@ This guided workflow includes:
 	}, prompts.ExportRecord)
 
 	// Run the server over stdin/stdout
-	if err := server.Run(ctx, &mcp.IOTransport{Reader: os.Stdin, Writer: mcpStdout}); err != nil {
+	if err := server.Run(ctx, &mcp.IOTransport{Reader: os.Stdin, Writer: nopCloserWriter{mcpStdout}}); err != nil {
 		return fmt.Errorf("failed to run MCP server: %w", err)
 	}
 
 	return nil
 }
+
+// nopCloserWriter keeps the MCP transport from closing the process's real
+// stdout on shutdown, as mcp.StdioTransport does.
+type nopCloserWriter struct {
+	io.Writer
+}
+
+func (nopCloserWriter) Close() error { return nil }
