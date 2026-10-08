@@ -191,11 +191,10 @@ func (d *Daemon) Stop() {
 	case <-time.After(stopTimeout):
 		log.Printf("dir-mcp: Directory daemon did not stop within %s", stopTimeout)
 	}
-
 }
 
 func (d *Daemon) waitReady(ctx context.Context, addr string, errCh <-chan error) error {
-	ctx, cancel := context.WithTimeout(ctx, startTimeout)
+	waitCtx, cancel := context.WithTimeout(ctx, startTimeout)
 	defer cancel()
 
 	ticker := time.NewTicker(pollInterval)
@@ -209,10 +208,10 @@ func (d *Daemon) waitReady(ctx context.Context, addr string, errCh <-chan error)
 			}
 
 			return fmt.Errorf("directory daemon failed before becoming ready: %w", err)
-		case <-ctx.Done():
-			return fmt.Errorf("directory daemon not ready on %s: %w", addr, ctx.Err())
+		case <-waitCtx.Done():
+			return fmt.Errorf("directory daemon not ready on %s: %w", addr, waitCtx.Err())
 		case <-ticker.C:
-			if reachable(addr) {
+			if reachable(ctx, addr) {
 				return nil
 			}
 		}
@@ -223,13 +222,13 @@ func (d *Daemon) waitReady(ctx context.Context, addr string, errCh <-chan error)
 // still shutting down releases it within seconds; anything longer means a
 // different long-running server (another dir-mcp, or a dirctl daemon).
 func waitPortFree(ctx context.Context, addr, display string, deadline time.Time) error {
-	if !reachable(addr) {
+	if !reachable(ctx, addr) {
 		return nil
 	}
 
 	log.Printf("dir-mcp: %s is in use, waiting for it to be released", display)
 
-	ctx, cancel := context.WithDeadline(ctx, deadline)
+	waitCtx, cancel := context.WithDeadline(ctx, deadline)
 	defer cancel()
 
 	ticker := time.NewTicker(pollInterval)
@@ -237,19 +236,21 @@ func waitPortFree(ctx context.Context, addr, display string, deadline time.Time)
 
 	for {
 		select {
-		case <-ctx.Done():
+		case <-waitCtx.Done():
 			return fmt.Errorf("%w: %s is still held after %s, most likely by another dir-mcp or a running Directory daemon; "+
 				"stop it, or set %s=false to use the running server", ErrAddressInUse, display, portFreeTimeout, EnvDisable)
 		case <-ticker.C:
-			if !reachable(addr) {
+			if !reachable(ctx, addr) {
 				return nil
 			}
 		}
 	}
 }
 
-func reachable(addr string) bool {
-	conn, err := net.DialTimeout("tcp", addr, dialTimeout)
+func reachable(ctx context.Context, addr string) bool {
+	dialer := net.Dialer{Timeout: dialTimeout}
+
+	conn, err := dialer.DialContext(ctx, "tcp", addr)
 	if err != nil {
 		return false
 	}

@@ -5,6 +5,7 @@ package daemon
 
 import (
 	"context"
+	"fmt"
 	"net"
 	"testing"
 	"time"
@@ -12,6 +13,17 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
+
+func listenLocal() (net.Listener, error) {
+	var lc net.ListenConfig
+
+	l, err := lc.Listen(context.Background(), "tcp", "127.0.0.1:0")
+	if err != nil {
+		return nil, fmt.Errorf("listen: %w", err)
+	}
+
+	return l, nil
+}
 
 func TestDialAddress(t *testing.T) {
 	assert.Equal(t, "127.0.0.1:8888", dialAddress("0.0.0.0:8888"))
@@ -52,7 +64,7 @@ func TestStartRemoteServer(t *testing.T) {
 }
 
 func TestWaitPortFreeReleased(t *testing.T) {
-	l, err := net.Listen("tcp", "127.0.0.1:0")
+	l, err := listenLocal()
 	require.NoError(t, err)
 
 	addr := l.Addr().String()
@@ -66,7 +78,7 @@ func TestWaitPortFreeReleased(t *testing.T) {
 }
 
 func TestWaitPortFreeTimeout(t *testing.T) {
-	l, err := net.Listen("tcp", "127.0.0.1:0")
+	l, err := listenLocal()
 	require.NoError(t, err)
 
 	defer l.Close()
