@@ -32,4 +32,12 @@ ignored = [
   "github.com/xeipuuv/gojsonreference",
   "github.com/xeipuuv/gojsonschema",
   "github.com/grpc-ecosystem/go-grpc-middleware/v2",
+  # Pulled in by github.com/agntcy/dir/cli (embedded daemon); licensei cannot
+  # detect these although each ships a permissive license file.
+  "modernc.org/libc",           # BSD-3-Clause
+  "modernc.org/mathutil",       # BSD-3-Clause
+  "modernc.org/memory",         # BSD-3-Clause
+  "modernc.org/sqlite",         # BSD-3-Clause
+  "github.com/libp2p/go-libp2p-pubsub", # MIT OR Apache-2.0
+  "buf.build/gen/go/agntcy/oasf-sdk/grpc/go", # generated code, same as the protobuf packages above
 ]
