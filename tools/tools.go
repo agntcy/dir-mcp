@@ -39,10 +39,19 @@ type Tools struct {
 // validator, and schema URL. The caller is responsible for calling Close()
 // when done. The validator is owned by the caller; Close() does not
 // touch it.
-func NewTools(ctx context.Context, validator corev1.Validator, schemaURL string) (*Tools, error) {
+//
+// When unauthenticated is true the client skips credential auto-detection and
+// connects without auth. Use it for a daemon started by dir-mcp itself, which
+// runs with no auth; otherwise a stale cached OIDC token from `dirctl auth
+// login` would be picked up and break client creation.
+func NewTools(ctx context.Context, validator corev1.Validator, schemaURL string, unauthenticated bool) (*Tools, error) {
 	config, err := client.LoadConfig()
 	if err != nil {
 		return nil, fmt.Errorf("failed to load client configuration: %w", err)
+	}
+
+	if unauthenticated {
+		config.AuthMode = "none"
 	}
 
 	c, err := client.New(ctx, client.WithConfig(config))
