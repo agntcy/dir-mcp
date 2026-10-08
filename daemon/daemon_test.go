@@ -7,6 +7,7 @@ import (
 	"context"
 	"net"
 	"testing"
+	"time"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -50,17 +51,28 @@ func TestStartRemoteServer(t *testing.T) {
 	assert.Nil(t, d)
 }
 
-func TestStartReusesRunningServer(t *testing.T) {
+func TestWaitPortFreeReleased(t *testing.T) {
+	l, err := net.Listen("tcp", "127.0.0.1:0")
+	require.NoError(t, err)
+
+	addr := l.Addr().String()
+
+	go func() {
+		time.Sleep(600 * time.Millisecond)
+		l.Close()
+	}()
+
+	require.NoError(t, waitPortFree(context.Background(), addr, addr, time.Now().Add(5*time.Second)))
+}
+
+func TestWaitPortFreeTimeout(t *testing.T) {
 	l, err := net.Listen("tcp", "127.0.0.1:0")
 	require.NoError(t, err)
 
 	defer l.Close()
 
-	t.Setenv("DIRECTORY_CLIENT_SERVER_ADDRESS", l.Addr().String())
-
-	d, err := Start(context.Background())
-	require.NoError(t, err)
-	assert.Nil(t, d)
+	err = waitPortFree(context.Background(), l.Addr().String(), l.Addr().String(), time.Now().Add(time.Second))
+	require.ErrorIs(t, err, ErrAddressInUse)
 }
 
 func TestStopNil(t *testing.T) {

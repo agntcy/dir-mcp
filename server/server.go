@@ -5,6 +5,7 @@ package server
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"log"
 	"os"
@@ -15,6 +16,7 @@ import (
 	"github.com/agntcy/dir-mcp/daemon"
 	"github.com/agntcy/dir-mcp/prompts"
 	"github.com/agntcy/dir-mcp/tools"
+	"github.com/agntcy/dir/utils/logging"
 	"github.com/agntcy/oasf-sdk/pkg/validator"
 	"github.com/modelcontextprotocol/go-sdk/mcp"
 )
@@ -50,6 +52,10 @@ func Serve(ctx context.Context) error {
 	mcpStdout := os.Stdout
 	os.Stdout = os.Stderr
 
+	// The Directory libraries' logger (which backs the std log package) was
+	// bound to the original stdout at init, so redirect it explicitly.
+	logging.SetDefaultOutput(os.Stderr)
+
 	// Stop the daemon on SIGINT/SIGTERM as well as on normal shutdown.
 	ctx, stop := signal.NotifyContext(ctx, os.Interrupt, syscall.SIGTERM)
 	defer stop()
@@ -58,6 +64,10 @@ func Serve(ctx context.Context) error {
 	// not already running. A failure is not fatal: the MCP server still runs
 	// and tools report connection errors if no Directory is reachable.
 	dirDaemon, err := daemon.Start(ctx)
+	if errors.Is(err, daemon.ErrAddressInUse) {
+		return fmt.Errorf("failed to start local Directory daemon: %w", err)
+	}
+
 	if err != nil {
 		log.Printf("dir-mcp: local Directory daemon not started: %v", err)
 	}
