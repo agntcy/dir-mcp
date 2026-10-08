@@ -11,6 +11,7 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"os"
 	"os/exec"
 	"path/filepath"
 	"time"
@@ -54,6 +55,8 @@ type MCPClient struct {
 func NewMCPClient(mcpDir string) (*MCPClient, error) {
 	cmd := exec.CommandContext(context.Background(), "go", "run", ".")
 	cmd.Dir = mcpDir
+	// The protocol tests do not need a Directory node; skip the embedded daemon.
+	cmd.Env = append(os.Environ(), "DIR_MCP_DAEMON=false")
 
 	stdin, err := cmd.StdinPipe()
 	if err != nil {
