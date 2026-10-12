@@ -5,12 +5,19 @@ package server
 
 import (
 	"context"
+	"errors"
 	"fmt"
+	"io"
+	"log"
 	"os"
+	"os/signal"
 	"strings"
+	"syscall"
 
+	"github.com/agntcy/dir-mcp/daemon"
 	"github.com/agntcy/dir-mcp/prompts"
 	"github.com/agntcy/dir-mcp/tools"
+	"github.com/agntcy/dir/utils/logging"
 	"github.com/agntcy/oasf-sdk/pkg/validator"
 	"github.com/modelcontextprotocol/go-sdk/mcp"
 )
@@ -41,8 +48,37 @@ func Serve(ctx context.Context) error {
 		return fmt.Errorf("failed to initialize OASF validator: %w", err)
 	}
 
+	// The embedded daemon logs to os.Stdout, which is the MCP transport. Keep
+	// the real stdout for the protocol and send everything else to stderr.
+	mcpStdout := os.Stdout
+	os.Stdout = os.Stderr
+
+	defer func() { os.Stdout = mcpStdout }()
+
+	// The Directory libraries' logger (which backs the std log package) was
+	// bound to the original stdout at init, so redirect it explicitly.
+	logging.SetDefaultOutput(os.Stderr)
+
+	// Stop the daemon on SIGINT/SIGTERM as well as on normal shutdown.
+	ctx, stop := signal.NotifyContext(ctx, os.Interrupt, syscall.SIGTERM)
+	defer stop()
+
+	// Start a local Directory daemon when the configured server is local and
+	// not already running. A failure is not fatal: the MCP server still runs
+	// and tools report connection errors if no Directory is reachable.
+	dirDaemon, err := daemon.Start(ctx)
+	if errors.Is(err, daemon.ErrAddressInUse) {
+		return fmt.Errorf("failed to start local Directory daemon: %w", err)
+	}
+
+	if err != nil {
+		log.Printf("dir-mcp: local Directory daemon not started: %v", err)
+	}
+
+	defer dirDaemon.Stop()
+
 	// Create Directory client tools (shared client for all tool calls)
-	t, err := tools.NewTools(ctx, oasfValidator, schemaURL)
+	t, err := tools.NewTools(ctx, oasfValidator, schemaURL, dirDaemon != nil)
 	if err != nil {
 		return fmt.Errorf("failed to create Directory client: %w", err)
 	}
@@ -460,9 +496,17 @@ This guided workflow includes:
 	}, prompts.ExportRecord)
 
 	// Run the server over stdin/stdout
-	if err := server.Run(ctx, &mcp.StdioTransport{}); err != nil {
+	if err := server.Run(ctx, &mcp.IOTransport{Reader: os.Stdin, Writer: nopCloserWriter{mcpStdout}}); err != nil {
 		return fmt.Errorf("failed to run MCP server: %w", err)
 	}
 
 	return nil
 }
+
+// nopCloserWriter keeps the MCP transport from closing the process's real
+// stdout on shutdown, as mcp.StdioTransport does.
+type nopCloserWriter struct {
+	io.Writer
+}
+
+func (nopCloserWriter) Close() error { return nil }

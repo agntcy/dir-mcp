@@ -7,6 +7,7 @@ import (
 	"context"
 	"testing"
 
+	"github.com/agntcy/dir-mcp/daemon"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -35,6 +36,10 @@ func TestServe_ValidationConfiguration(t *testing.T) {
 			// The validator is constructed inside Serve from this value, so
 			// no global initialization is required.
 			t.Setenv("OASF_API_VALIDATION_SCHEMA_URL", tt.oasfSchemaURLEnv)
+
+			// Serve would otherwise boot a real embedded Directory daemon,
+			// which is not re-entrant within one test process.
+			t.Setenv(daemon.EnvDisable, "false")
 
 			// Create a context that will be cancelled immediately to stop Serve early
 			ctx, cancel := context.WithCancel(context.Background())
