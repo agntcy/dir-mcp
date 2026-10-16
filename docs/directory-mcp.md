@@ -358,6 +358,34 @@ Add the MCP server to your IDE's MCP configuration using Docker.
 }
 ```
 
+### Local Directory Daemon
+
+When the configured Directory server address is local (`localhost` or a loopback IP, including the default `0.0.0.0:8888`), the MCP server automatically starts an embedded Directory daemon (the equivalent of `dirctl daemon start`, run in-process) on startup and stops it on shutdown. No separate Directory deployment is needed to try the push, pull, and search tools.
+
+- The daemon runs **without authentication**. When it is started by the MCP server, the client connects with auth mode `none`, ignoring any cached OIDC token from `dirctl auth login`.
+- Daemon logs go to stderr, so the MCP stdio stream is not affected.
+- Only one dir-mcp can own the local daemon at a time (guarded by `~/.agntcy/dir/dir-mcp.lock`). A second instance, for example in another editor, waits up to 30 seconds for the first to exit, then fails with an "address already in use" error.
+- If the address is held by something else, such as a running `dirctl daemon`, startup fails the same way. Stop it, or disable the embedded daemon to use the running server.
+- Remote server addresses (for example `ads.outshift.io:443`) never start a daemon.
+- If the daemon fails to start for another reason, the MCP server still runs, and tools report connection errors until a Directory is reachable.
+
+To disable the embedded daemon, set `DIR_MCP_DAEMON` to `false`, `0`, `off`, or `no`:
+
+```json
+{
+  "mcpServers": {
+    "dir-mcp-server": {
+      "command": "/absolute/path/to/dirctl",
+      "args": ["mcp", "serve"],
+      "env": {
+        "DIR_MCP_DAEMON": "false",
+        "DIRECTORY_CLIENT_SERVER_ADDRESS": "localhost:8888"
+      }
+    }
+  }
+}
+```
+
 ### Environment Variables
 
 The following environment variables can be used with both binary and Docker configurations:
@@ -376,6 +404,10 @@ The following environment variables can be used with both binary and Docker conf
 - `DIRECTORY_CLIENT_OIDC_CLIENT_ID` - OIDC client ID (for interactive login via `dirctl auth login`)
 - `DIRECTORY_CLIENT_AUTH_TOKEN` - Pre-issued bearer token (for `oidc` mode; skips interactive login)
 - `DIRECTORY_CLIENT_TLS_SKIP_VERIFY` - Skip TLS verification (set to `true` if needed)
+
+#### Local Daemon
+
+- `DIR_MCP_DAEMON` - Set to `false`, `0`, `off`, or `no` to disable the embedded local daemon (default: enabled). See [Local Directory Daemon](#local-directory-daemon).
 
 #### OIDC Authentication
 

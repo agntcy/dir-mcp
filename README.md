@@ -16,6 +16,7 @@ The server runs via the `dirctl` CLI and connects AI assistants and IDEs to Dire
 - Search, push, and pull records from Directory servers
 - Verify record signatures and domain name ownership
 - Import from and export to MCP, A2A, Agent Skills, and GitHub Copilot formats
+- Start an embedded local Directory daemon automatically when the configured server is local (disable with `DIR_MCP_DAEMON=false`)
 - Run guided workflows via MCP prompts (create, validate, search, and more)
 
 See [docs/directory-mcp.md](docs/directory-mcp.md) for full documentation — tools, prompts, setup, configuration, and usage.
