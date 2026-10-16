@@ -104,6 +104,7 @@ directory, without needing a context at all.
 | `DIRECTORY_CLIENT_AUTH_MODE` | No | Auth mode: `none`, `token`, `oidc`, `x509`, `jwt`, `tls` |
 | `DIRECTORY_CLIENT_AUTH_TOKEN` | No | Pre-issued bearer token for CI/scripts |
 | `DIRECTORY_CLIENT_OIDC_ISSUER` / `DIRECTORY_CLIENT_OIDC_CLIENT_ID` | No | OIDC issuer/client ID (for `oidc` mode) |
+| `DIR_MCP_DAEMON` | No | Set to `false`, `0`, `off`, or `no` to disable the embedded local Directory daemon that starts automatically when the server address is local |
 
 ## Dependencies installation
 
