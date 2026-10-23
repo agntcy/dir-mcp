@@ -8,7 +8,7 @@ replace github.com/ThalesIgnite/crypto11 => github.com/eclipse-keypont/crypto11 
 
 require (
 	github.com/agntcy/dir/api v1.7.1
-	github.com/agntcy/dir/cli v1.7.1
+	github.com/agntcy/dir/cli v1.8.0
 	github.com/agntcy/dir/client v1.7.1
 	github.com/agntcy/dir/utils v1.7.1
 	github.com/agntcy/oasf-sdk/pkg v1.3.1-0.20260910081500-f0c6172a010a
