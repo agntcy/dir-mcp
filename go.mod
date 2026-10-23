@@ -7,10 +7,10 @@ go 1.27.1
 replace github.com/ThalesIgnite/crypto11 => github.com/eclipse-keypont/crypto11 v1.6.8
 
 require (
-	github.com/agntcy/dir/api v1.7.1
+	github.com/agntcy/dir/api v1.8.0
 	github.com/agntcy/dir/cli v1.7.1
-	github.com/agntcy/dir/client v1.7.1
-	github.com/agntcy/dir/utils v1.7.1
+	github.com/agntcy/dir/client v1.8.0
+	github.com/agntcy/dir/utils v1.8.0
 	github.com/agntcy/oasf-sdk/pkg v1.3.1-0.20260910081500-f0c6172a010a
 	github.com/modelcontextprotocol/go-sdk v1.6.1
 	github.com/stretchr/testify v1.12.1
