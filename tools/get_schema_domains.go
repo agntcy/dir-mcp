@@ -15,7 +15,7 @@ import (
 
 // GetSchemaDomainsInput represents the input for getting OASF schema domains.
 type GetSchemaDomainsInput struct {
-	Version      string `json:"version"                 jsonschema:"OASF schema version to retrieve domains from (e.g., 0.7.0, 0.8.0)"`
+	Version      string `json:"version"                 jsonschema:"OASF schema version to retrieve domains from (e.g., 0.8.0, 1.0.0)"`
 	ParentDomain string `json:"parent_domain,omitempty" jsonschema:"Optional parent domain name to filter sub-domains (e.g., 'artificial_intelligence')"`
 }
 

@@ -43,10 +43,10 @@ func TestListVersions(t *testing.T) {
 		_, output, err := tools.ListVersions(ctx, nil, input)
 
 		require.NoError(t, err)
-		assert.Contains(t, output.AvailableVersions, "0.7.0")
-		// 1.0.0 may not be available in all test environments, so we check but don't fail
-		if !contains(output.AvailableVersions, "1.0.0") {
-			t.Logf("Note: 1.0.0 not found in available versions: %v", output.AvailableVersions)
+		assert.Contains(t, output.AvailableVersions, "1.1.0")
+		// 1.1.0 may not be available in all test environments, so we check but don't fail
+		if !contains(output.AvailableVersions, "1.1.0") {
+			t.Logf("Note: 1.1.0 not found in available versions: %v", output.AvailableVersions)
 		}
 
 		assert.NotEmpty(t, output.DefaultVersion, "Default version should be set")

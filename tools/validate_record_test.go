@@ -33,7 +33,7 @@ var _ corev1.Validator = (*fakeValidator)(nil)
 
 func TestValidateRecord(t *testing.T) {
 	validRecord := `{
-		"schema_version": "0.7.0",
+		"schema_version": "1.1.0",
 		"name": "test-agent",
 		"version": "1.0.0",
 		"description": "A test agent",
@@ -62,7 +62,7 @@ func TestValidateRecord(t *testing.T) {
 		require.NoError(t, err)
 		assert.Empty(t, output.ErrorMessage)
 		assert.True(t, output.Valid, "Record should be valid (warnings don't affect validity)")
-		assert.Equal(t, "0.7.0", output.SchemaVersion)
+		assert.Equal(t, "1.1.0", output.SchemaVersion)
 		assert.Empty(t, output.ValidationErrors)
 	})
 
@@ -125,7 +125,7 @@ func TestValidateRecord(t *testing.T) {
 
 		require.NoError(t, err)
 		assert.False(t, output.Valid)
-		assert.Equal(t, "0.7.0", output.SchemaVersion)
+		assert.Equal(t, "1.1.0", output.SchemaVersion)
 		assert.Contains(t, output.ErrorMessage, "Validation error")
 		assert.Contains(t, output.ErrorMessage, "schema endpoint unreachable")
 	})

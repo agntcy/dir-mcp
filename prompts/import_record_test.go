@@ -26,7 +26,7 @@ func TestImportRecord(t *testing.T) {
 					"source_data_path": "server.json",
 					"source_format":    "mcp",
 					"output_path":      "record.json",
-					"schema_version":   "0.7.0",
+					"schema_version":   "1.1.0",
 				},
 			},
 		}
@@ -45,7 +45,7 @@ func TestImportRecord(t *testing.T) {
 		assert.Contains(t, promptText, "server.json")
 		assert.Contains(t, promptText, "mcp")
 		assert.Contains(t, promptText, "record.json")
-		assert.Contains(t, promptText, "0.7.0")
+		assert.Contains(t, promptText, "1.1.0")
 		assert.Contains(t, promptText, "agntcy_oasf_list_versions")
 		assert.Contains(t, promptText, "agntcy_oasf_import_record")
 		assert.Contains(t, promptText, "agntcy_oasf_get_schema_domains")

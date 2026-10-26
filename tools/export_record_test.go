@@ -178,7 +178,7 @@ Use this skill when users ask for code review.
 		t.Parallel()
 
 		recordJSON := `{
-			"schema_version": "1.0.0",
+			"schema_version": "1.1.0",
 			"name": "test-agent"
 		}`
 

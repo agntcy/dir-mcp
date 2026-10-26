@@ -25,16 +25,16 @@ func TestGetSchemaDomains(t *testing.T) {
 		checkCallback func(t *testing.T, output GetSchemaDomainsOutput)
 	}{
 		{
-			name: "Get top-level domains for version 0.7.0",
+			name: "Get top-level domains for version 1.1.0",
 			input: GetSchemaDomainsInput{
-				Version: "0.7.0",
+				Version: "1.1.0",
 			},
 			expectError:   false,
 			expectDomains: true,
 			checkCallback: func(t *testing.T, output GetSchemaDomainsOutput) {
 				t.Helper()
 
-				assert.Equal(t, "0.7.0", output.Version)
+				assert.Equal(t, "1.1.0", output.Version)
 				assert.Empty(t, output.ErrorMessage)
 				assert.NotEmpty(t, output.Domains)
 
@@ -47,7 +47,7 @@ func TestGetSchemaDomains(t *testing.T) {
 		{
 			name: "Get sub-domains for a parent domain",
 			input: GetSchemaDomainsInput{
-				Version:      "0.7.0",
+				Version:      "1.1.0",
 				ParentDomain: "technology",
 			},
 			expectError:   false,
@@ -55,7 +55,7 @@ func TestGetSchemaDomains(t *testing.T) {
 			checkCallback: func(t *testing.T, output GetSchemaDomainsOutput) {
 				t.Helper()
 
-				assert.Equal(t, "0.7.0", output.Version)
+				assert.Equal(t, "1.1.0", output.Version)
 				assert.Equal(t, "technology", output.ParentDomain)
 				assert.Empty(t, output.ErrorMessage)
 				assert.NotEmpty(t, output.Domains)
@@ -99,7 +99,7 @@ func TestGetSchemaDomains(t *testing.T) {
 		{
 			name: "Non-existent parent domain",
 			input: GetSchemaDomainsInput{
-				Version:      "0.7.0",
+				Version:      "1.1.0",
 				ParentDomain: "non_existent_domain",
 			},
 			expectError:   false,

@@ -400,16 +400,6 @@ var _ = ginkgo.Describe("MCP Server Protocol Tests", func() {
 			ginkgo.GinkgoWriter.Println("All tools listed successfully")
 		})
 
-		ginkgo.It("should validate a valid 0.7.0 record", func() {
-			recordJSON := string(testdata.ExpectedRecordV070JSON)
-			toolOutput := validateRecordAndParseOutput(client, recordJSON, 4)
-
-			gomega.Expect(toolOutput["valid"]).To(gomega.BeTrue())
-			gomega.Expect(toolOutput["schema_version"]).To(gomega.Equal("0.7.0"))
-
-			ginkgo.GinkgoWriter.Println("Record validated successfully")
-		})
-
 		ginkgo.It("should validate a valid 0.8.0 record", func() {
 			recordJSON := string(testdata.ExpectedRecordV080V4JSON)
 			toolOutput := validateRecordAndParseOutput(client, recordJSON, 6)
@@ -430,11 +420,21 @@ var _ = ginkgo.Describe("MCP Server Protocol Tests", func() {
 			ginkgo.GinkgoWriter.Println("1.0.0 record validated successfully")
 		})
 
+		ginkgo.It("should validate a valid 1.1.0 record", func() {
+			recordJSON := string(testdata.ExpectedRecordV110JSON)
+			toolOutput := validateRecordAndParseOutput(client, recordJSON, 8)
+
+			gomega.Expect(toolOutput["valid"]).To(gomega.BeTrue())
+			gomega.Expect(toolOutput["schema_version"]).To(gomega.Equal("1.1.0"))
+
+			ginkgo.GinkgoWriter.Println("1.1.0 record validated successfully")
+		})
+
 		ginkgo.It("should return validation errors for invalid record", func() {
 			invalidJSON := `{
 			"name": "test-agent",
 			"version": "1.0.0",
-			"schema_version": "0.7.0",
+			"schema_version": "1.1.0",
 			"description": "Test",
 			"authors": ["Test"],
 			"created_at": "2025-01-01T00:00:00Z"
@@ -510,12 +510,8 @@ var _ = ginkgo.Describe("MCP Server Protocol Tests", func() {
 
 			availableVersions, ok := toolOutput["available_versions"].([]any)
 			gomega.Expect(ok).To(gomega.BeTrue())
-			gomega.Expect(availableVersions).To(gomega.ContainElement("0.7.0"))
-
-			matched, err := gomega.ContainElement("1.0.0").Match(availableVersions)
-			if err == nil && !matched {
-				ginkgo.GinkgoWriter.Printf("Note: 1.0.0 not found in available versions: %v\n", availableVersions)
-			}
+			gomega.Expect(availableVersions).To(gomega.ContainElement("1.0.0"))
+			gomega.Expect(availableVersions).To(gomega.ContainElement("1.1.0"))
 
 			count, ok := toolOutput["count"].(float64)
 			gomega.Expect(ok).To(gomega.BeTrue())
@@ -524,14 +520,14 @@ var _ = ginkgo.Describe("MCP Server Protocol Tests", func() {
 			ginkgo.GinkgoWriter.Printf("Available versions: %v (count: %v)\n", availableVersions, count)
 		})
 
-		ginkgo.It("should get OASF 0.7.0 schema", func() {
-			getSchemaAndValidate(client, "0.7.0", 3)
-			ginkgo.GinkgoWriter.Println("OASF 0.7.0 schema retrieved successfully")
-		})
-
 		ginkgo.It("should get OASF 1.0.0 schema", func() {
 			getSchemaAndValidate(client, "1.0.0", 4)
 			ginkgo.GinkgoWriter.Println("OASF 1.0.0 schema retrieved successfully")
+		})
+
+		ginkgo.It("should get OASF 1.1.0 schema", func() {
+			getSchemaAndValidate(client, "1.1.0", 5)
+			ginkgo.GinkgoWriter.Println("OASF 1.1.0 schema retrieved successfully")
 		})
 
 		ginkgo.It("should return error for invalid schema version", func() {

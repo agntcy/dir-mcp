@@ -66,7 +66,7 @@ func TestCreateRecord(t *testing.T) {
 		req := &mcp.GetPromptRequest{
 			Params: &mcp.GetPromptParams{
 				Arguments: map[string]string{
-					"schema_version": "1.0.0",
+					"schema_version": "1.1.0",
 				},
 			},
 		}
@@ -79,6 +79,6 @@ func TestCreateRecord(t *testing.T) {
 		require.True(t, ok, "Content should be TextContent")
 
 		content := textContent.Text
-		assert.Contains(t, content, "1.0.0")
+		assert.Contains(t, content, "1.1.0")
 	})
 }

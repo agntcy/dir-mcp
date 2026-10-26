@@ -17,13 +17,13 @@ func TestGetSchema(t *testing.T) {
 
 	t.Run("should return schema for valid version", func(t *testing.T) {
 		ctx := context.Background()
-		input := GetSchemaInput{Version: "0.7.0"}
+		input := GetSchemaInput{Version: "1.1.0"}
 
 		_, output, err := tools.GetSchema(ctx, nil, input)
 
 		require.NoError(t, err)
 		assert.Empty(t, output.ErrorMessage)
-		assert.Equal(t, "0.7.0", output.Version)
+		assert.Equal(t, "1.1.0", output.Version)
 		assert.NotEmpty(t, output.Schema)
 		assert.Greater(t, len(output.Schema), 100, "Schema should be a reasonable size")
 		assert.NotEmpty(t, output.AvailableVersions)

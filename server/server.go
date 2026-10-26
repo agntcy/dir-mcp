@@ -355,7 +355,7 @@ Analyzes the current directory codebase and automatically creates a complete OAS
 			},
 			{
 				Name:        "schema_version",
-				Description: "OASF schema version to use (e.g., 0.7.0, 0.8.0, 1.0.0). Defaults to 1.0.0",
+				Description: "OASF schema version to use (e.g., 0.8.0, 1.0.0, 1.1.0). Defaults to 1.0.0",
 				Required:    false,
 			},
 		},
@@ -458,7 +458,7 @@ This guided workflow includes:
 			},
 			{
 				Name:        "schema_version",
-				Description: "OASF schema version to use for validation (e.g., 0.7.0, 0.8.0). Defaults to 0.8.0",
+				Description: "OASF schema version to use for validation (e.g., 0.8.0, 1.0.0). Defaults to 0.8.0",
 				Required:    false,
 			},
 		},
