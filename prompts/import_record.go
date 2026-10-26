@@ -16,7 +16,7 @@ type ImportRecordInput struct {
 	SourceDataPath string `json:"source_data_path" jsonschema:"Path to the source data file to import (required)"`
 	SourceFormat   string `json:"source_format"    jsonschema:"Source format to import from (e.g., 'mcp', 'a2a') (required)"`
 	OutputPath     string `json:"output_path"      jsonschema:"Where to save the imported OASF record: file path (e.g., record.json) or empty for stdout"`
-	SchemaVersion  string `json:"schema_version"   jsonschema:"OASF schema version to use for validation (e.g., 0.7.0, 0.8.0). Defaults to 0.8.0"`
+	SchemaVersion  string `json:"schema_version"   jsonschema:"OASF schema version to use for validation (e.g., 0.8.0, 1.0.0). Defaults to 0.8.0"`
 }
 
 // ImportRecord implements the import_record prompt.

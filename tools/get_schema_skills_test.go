@@ -25,16 +25,16 @@ func TestGetSchemaSkills(t *testing.T) {
 		checkCallback func(t *testing.T, output GetSchemaSkillsOutput)
 	}{
 		{
-			name: "Get top-level skills for version 0.7.0",
+			name: "Get top-level skills for version 1.1.0",
 			input: GetSchemaSkillsInput{
-				Version: "0.7.0",
+				Version: "1.1.0",
 			},
 			expectError:  false,
 			expectSkills: true,
 			checkCallback: func(t *testing.T, output GetSchemaSkillsOutput) {
 				t.Helper()
 
-				assert.Equal(t, "0.7.0", output.Version)
+				assert.Equal(t, "1.1.0", output.Version)
 				assert.Empty(t, output.ErrorMessage)
 				assert.NotEmpty(t, output.Skills)
 
@@ -47,7 +47,7 @@ func TestGetSchemaSkills(t *testing.T) {
 		{
 			name: "Get sub-skills for a parent skill",
 			input: GetSchemaSkillsInput{
-				Version:     "0.7.0",
+				Version:     "1.1.0",
 				ParentSkill: "retrieval_augmented_generation",
 			},
 			expectError:  false,
@@ -55,7 +55,7 @@ func TestGetSchemaSkills(t *testing.T) {
 			checkCallback: func(t *testing.T, output GetSchemaSkillsOutput) {
 				t.Helper()
 
-				assert.Equal(t, "0.7.0", output.Version)
+				assert.Equal(t, "1.1.0", output.Version)
 				assert.Equal(t, "retrieval_augmented_generation", output.ParentSkill)
 				assert.Empty(t, output.ErrorMessage)
 				assert.NotEmpty(t, output.Skills)
@@ -99,7 +99,7 @@ func TestGetSchemaSkills(t *testing.T) {
 		{
 			name: "Non-existent parent skill",
 			input: GetSchemaSkillsInput{
-				Version:     "0.7.0",
+				Version:     "1.1.0",
 				ParentSkill: "non_existent_skill",
 			},
 			expectError:  false,

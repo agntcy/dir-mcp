@@ -15,7 +15,7 @@ Lists all available OASF schema versions supported by the server.
 
 Retrieves the complete OASF schema JSON content for the specified version.
 
-**Input:** `version` (string) - OASF schema version (e.g., "0.7.0", "0.8.0", "1.0.0")  
+**Input:** `version` (string) - OASF schema version (e.g., "0.8.0", "1.0.0", "1.1.0")  
 **Output:** `version` (string), `schema` (string), `available_versions` ([]string), `error_message` (string)
 
 ### `agntcy_oasf_get_schema_skills`
@@ -23,7 +23,7 @@ Retrieves the complete OASF schema JSON content for the specified version.
 Retrieves skills from the OASF schema with hierarchical navigation support.
 
 **Input:**
-- `version` (string, **required**) - OASF schema version (e.g., "0.7.0")
+- `version` (string, **required**) - OASF schema version (e.g., "1.0.0")
 - `parent_skill` (string, optional) - Parent skill to filter sub-skills
 
 **Output:** `skills` (array), `version`, `parent_skill`, `available_versions`, `error_message`
@@ -35,7 +35,7 @@ Without `parent_skill`, returns top-level skill categories. With `parent_skill`,
 Retrieves domains from the OASF schema with hierarchical navigation support.
 
 **Input:**
-- `version` (string, **required**) - OASF schema version (e.g., "0.7.0")
+- `version` (string, **required**) - OASF schema version (e.g., "1.0.0")
 - `parent_domain` (string, optional) - Parent domain to filter sub-domains
 
 **Output:** `domains` (array), `version`, `parent_domain`, `available_versions`, `error_message`

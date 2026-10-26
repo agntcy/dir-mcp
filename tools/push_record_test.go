@@ -89,7 +89,7 @@ func TestPushRecord_InvalidRecord(t *testing.T) {
 
 	// Record that parses successfully but will be rejected by the validator.
 	invalidRecordJSON := `{
-		"schema_version": "0.7.0",
+		"schema_version": "1.1.0",
 		"name": "test-agent"
 	}`
 

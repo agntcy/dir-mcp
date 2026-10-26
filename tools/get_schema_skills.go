@@ -15,7 +15,7 @@ import (
 
 // GetSchemaSkillsInput represents the input for getting OASF schema skills.
 type GetSchemaSkillsInput struct {
-	Version     string `json:"version"                jsonschema:"OASF schema version to retrieve skills from (e.g., 0.7.0, 0.8.0)"`
+	Version     string `json:"version"                jsonschema:"OASF schema version to retrieve skills from (e.g., 0.8.0, 1.0.0)"`
 	ParentSkill string `json:"parent_skill,omitempty" jsonschema:"Optional parent skill name to filter sub-skills (e.g., 'retrieval_augmented_generation')"`
 }
 
