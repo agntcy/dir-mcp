@@ -82,12 +82,12 @@ func TestVerifyNameOutputSerialization(t *testing.T) {
 		{
 			name: "verified output",
 			output: VerifyNameOutput{
+				CID:      "bafkreiabcd1234567890",
 				Verified: true,
-				DomainVerification: &DomainVerificationDetail{
-					Domain:       "example.com",
-					Method:       "wellknown",
-					MatchedKeyID: "key-123",
-					VerifiedAt:   "2025-01-21T12:00:00Z",
+				Identity: &ClaimVerificationDetail{
+					Subject:    "example.com",
+					Status:     "verified",
+					VerifiedAt: "2025-01-21T12:00:00Z",
 				},
 			},
 		},
@@ -122,12 +122,9 @@ func TestVerifyNameOutputSerialization(t *testing.T) {
 			assert.Equal(t, tt.output.Verified, decoded.Verified)
 			assert.Equal(t, tt.output.ErrorMessage, decoded.ErrorMessage)
 
-			if tt.output.DomainVerification != nil {
-				require.NotNil(t, decoded.DomainVerification)
-				assert.Equal(t, tt.output.DomainVerification.Domain, decoded.DomainVerification.Domain)
-				assert.Equal(t, tt.output.DomainVerification.Method, decoded.DomainVerification.Method)
-				assert.Equal(t, tt.output.DomainVerification.MatchedKeyID, decoded.DomainVerification.MatchedKeyID)
-			}
+			assert.Equal(t, tt.output.CID, decoded.CID)
+			assert.Equal(t, tt.output.Identity, decoded.Identity)
+			assert.Equal(t, tt.output.Owner, decoded.Owner)
 		})
 	}
 }
