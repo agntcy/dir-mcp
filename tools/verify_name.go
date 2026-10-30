@@ -7,34 +7,37 @@ import (
 	"context"
 	"fmt"
 
-	namingv1 "github.com/agntcy/dir/api/naming/v1"
+	identityv1 "github.com/agntcy/dir/api/identity/v1"
 	"github.com/modelcontextprotocol/go-sdk/mcp"
 )
 
-// VerifyNameInput defines the input parameters for verifying a record's name ownership.
+// VerifyNameInput defines the input parameters for verifying a record's identity.
 type VerifyNameInput struct {
 	CID     string `json:"cid,omitempty"     jsonschema:"Content Identifier (CID) of the record to verify"`
 	Name    string `json:"name,omitempty"    jsonschema:"Human-readable name of the record (e.g., 'example.com/my-agent')"`
 	Version string `json:"version,omitempty" jsonschema:"Optional version to verify (e.g., 'v1.0.0'). If omitted, verifies the latest version."`
 }
 
-// DomainVerificationDetail provides details about the domain verification.
-type DomainVerificationDetail struct {
-	Domain       string `json:"domain"                   jsonschema:"The domain that was verified"`
-	Method       string `json:"method"                   jsonschema:"Verification method used (e.g., 'wellknown')"`
-	MatchedKeyID string `json:"matched_key_id,omitempty" jsonschema:"The key ID that matched from the domain's well-known file"`
-	VerifiedAt   string `json:"verified_at,omitempty"    jsonschema:"Timestamp when verification occurred"`
+// ClaimVerificationDetail provides details about the verification of an identity or ownership claim.
+type ClaimVerificationDetail struct {
+	Subject    string `json:"subject,omitempty"     jsonschema:"The identity or owner the claim asserts"`
+	Status     string `json:"status"                jsonschema:"Verification status of the claim (verified, failed or unverified)"`
+	Error      string `json:"error,omitempty"       jsonschema:"Reason the verification failed"`
+	VerifiedAt string `json:"verified_at,omitempty" jsonschema:"Timestamp when verification occurred"`
 }
 
 // VerifyNameOutput defines the output of name verification.
 type VerifyNameOutput struct {
-	Verified           bool                      `json:"verified"                      jsonschema:"Whether the name ownership was verified"`
-	DomainVerification *DomainVerificationDetail `json:"domain_verification,omitempty" jsonschema:"Details about the domain verification (only present if verified)"`
-	ErrorMessage       string                    `json:"error_message,omitempty"       jsonschema:"Error message if verification failed"`
+	CID          string                   `json:"cid,omitempty"           jsonschema:"CID of the record that was checked"`
+	Verified     bool                     `json:"verified"                jsonschema:"Whether the record's identity claim was verified"`
+	Identity     *ClaimVerificationDetail `json:"identity,omitempty"      jsonschema:"Verification result of the record's identity claim"`
+	Owner        *ClaimVerificationDetail `json:"owner,omitempty"         jsonschema:"Verification result of the record's ownership claim"`
+	ErrorMessage string                   `json:"error_message,omitempty" jsonschema:"Error message if verification failed"`
 }
 
-// VerifyName verifies that a record's name is owned by the domain it claims.
-// This checks that the record was signed with a key published in the domain's well-known JWKS file.
+// VerifyName reports the verification status of a record's identity and ownership claims.
+// A record can be looked up by CID, or by name and optional version, which is resolved to
+// the newest matching record.
 func (t *Tools) VerifyName(ctx context.Context, _ *mcp.CallToolRequest, input VerifyNameInput) (
 	*mcp.CallToolResult,
 	VerifyNameOutput,
@@ -47,51 +50,83 @@ func (t *Tools) VerifyName(ctx context.Context, _ *mcp.CallToolRequest, input Ve
 		}, nil
 	}
 
-	// Call the appropriate verification method
-	var resp *namingv1.GetVerificationInfoResponse
+	cid := input.CID
 
-	var err error
-
-	if input.CID != "" {
-		// Verify by CID
-		resp, err = t.Client.GetVerificationInfo(ctx, input.CID)
+	if cid == "" {
+		// Resolve name (and optional version) to a CID; results are newest first
+		resolved, err := t.Client.Resolve(ctx, input.Name, input.Version)
 		if err != nil {
 			return nil, VerifyNameOutput{
 				ErrorMessage: fmt.Sprintf("Failed to verify name: %v", err),
 			}, nil
 		}
-	} else {
-		// Verify by name (and optional version)
-		resp, err = t.Client.GetVerificationInfoByName(ctx, input.Name, input.Version)
-		if err != nil {
+
+		if len(resolved.GetRecords()) == 0 {
 			return nil, VerifyNameOutput{
-				ErrorMessage: fmt.Sprintf("Failed to verify name: %v", err),
+				ErrorMessage: fmt.Sprintf("No record found for name %q", input.Name),
 			}, nil
 		}
+
+		cid = resolved.GetRecords()[0].GetCid()
 	}
 
-	// Build output
+	resp, err := t.Client.GetIdentityStatus(ctx, cid)
+	if err != nil {
+		return nil, VerifyNameOutput{
+			CID:          cid,
+			ErrorMessage: fmt.Sprintf("Failed to verify name: %v", err),
+		}, nil
+	}
+
 	output := VerifyNameOutput{
-		Verified: resp.GetVerified(),
+		CID:      cid,
+		Identity: claimDetail(resp.GetIdentity()),
+		Owner:    claimDetail(resp.GetOwner()),
 	}
 
-	if !resp.GetVerified() && resp.GetErrorMessage() != "" {
-		output.ErrorMessage = resp.GetErrorMessage()
-	}
+	output.Verified = resp.GetIdentity().GetStatus() == identityv1.ClaimVerificationStatus_CLAIM_VERIFICATION_STATUS_VERIFIED
 
-	// Add domain verification details if available
-	if v := resp.GetVerification(); v != nil {
-		if dv := v.GetDomain(); dv != nil {
-			output.DomainVerification = &DomainVerificationDetail{
-				Domain:       dv.GetDomain(),
-				Method:       dv.GetMethod(),
-				MatchedKeyID: dv.GetKeyId(),
-			}
-			if dv.GetVerifiedAt() != nil {
-				output.DomainVerification.VerifiedAt = dv.GetVerifiedAt().AsTime().String()
-			}
+	if !output.Verified {
+		switch {
+		case resp.GetIdentity() == nil:
+			output.ErrorMessage = "Identity claim has not been verified yet"
+		case resp.GetIdentity().GetError() != "":
+			output.ErrorMessage = resp.GetIdentity().GetError()
 		}
 	}
 
 	return nil, output, nil
+}
+
+// claimDetail converts a claim verification result to its tool output form.
+// A claim with no result yet is nil.
+func claimDetail(v *identityv1.ClaimVerification) *ClaimVerificationDetail {
+	if v == nil {
+		return nil
+	}
+
+	detail := &ClaimVerificationDetail{
+		Subject: v.GetSubject(),
+		Status:  claimStatus(v.GetStatus()),
+		Error:   v.GetError(),
+	}
+
+	if v.GetVerifiedAt() != nil {
+		detail.VerifiedAt = v.GetVerifiedAt().AsTime().String()
+	}
+
+	return detail
+}
+
+func claimStatus(s identityv1.ClaimVerificationStatus) string {
+	switch s {
+	case identityv1.ClaimVerificationStatus_CLAIM_VERIFICATION_STATUS_VERIFIED:
+		return "verified"
+	case identityv1.ClaimVerificationStatus_CLAIM_VERIFICATION_STATUS_FAILED:
+		return "failed"
+	case identityv1.ClaimVerificationStatus_CLAIM_VERIFICATION_STATUS_UNSPECIFIED:
+		return "unverified"
+	default:
+		return "unverified"
+	}
 }

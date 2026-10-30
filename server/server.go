@@ -237,25 +237,26 @@ Use this tool to ensure a record has been properly signed and hasn't been tamper
 		`),
 	}, t.VerifyRecord)
 
-	// Add tool for verifying record name ownership
+	// Add tool for verifying record identity and ownership claims
 	mcp.AddTool(server, &mcp.Tool{
 		Name: "agntcy_dir_verify_name",
 		Description: strings.TrimSpace(`
-Verifies that a record's name is owned by the domain it claims.
-This tool checks that the record was signed with a key published in the domain's 
-well-known JWKS file (/.well-known/jwks.json).
+Reports whether a record's identity and ownership claims have been verified.
+Claims are verified by the directory and this tool returns the last result.
 
 You can verify by:
 - CID: Directly verify a specific record by its Content Identifier
 - Name: Verify a record by its human-readable name (e.g., "example.com/my-agent")
 - Name + Version: Verify a specific version (e.g., "example.com/my-agent" + "v1.0.0")
 
-Returns verification status and domain verification details including:
-- The verified domain
-- The verification method used
-- The matched key ID from the domain's JWKS
+When verifying by name without a version, the newest matching record is checked.
 
-Use this tool to verify that an agent record was actually published by the domain owner.
+Returns the verification status of the identity claim and, when present, the ownership claim, including:
+- The subject the claim asserts
+- The status (verified, failed or unverified)
+- The reason a verification failed
+
+Use this tool to verify that an agent record was actually published by the identity it claims.
 		`),
 	}, t.VerifyName)
 

@@ -9,6 +9,7 @@ approved = [
   "Apache-2.0 WITH LLVM-exception",
   "0BSD",
   "BSD-2-Clause",
+  "BSD-2-Clause-Views",
   "BSD-3-Clause",
   "ISC",
   "MIT",
