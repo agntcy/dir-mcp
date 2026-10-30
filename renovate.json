@@ -73,14 +73,12 @@
       "groupSlug": "dir-feat-deps",
       "matchDatasources": ["go"],
       "matchPackageNames": [
-        "github.com/agntcy/dir/api",
-        "github.com/agntcy/dir/client",
-        "github.com/agntcy/dir/utils"
+        "github.com/agntcy/dir/**"
       ],
       "addLabels": ["agntcy", "release"],
       "automerge": false,
       "description": [
-        "Group Directory modules consumed by dir-mcp.",
+        "Group all github.com/agntcy/dir/* modules (api, cli, client, reconciler, server, utils, ...) in a single PR.",
         "These dependencies should be reviewed as part of the Directory release train."
       ]
     },
