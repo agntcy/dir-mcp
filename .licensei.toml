@@ -29,6 +29,7 @@ ignored = [
   "github.com/modelcontextprotocol/go-sdk",
   "github.com/muhlemmer/gu",
   "gitlab.com/gitlab-org/api/client-go",
+  "gitlab.com/gitlab-org/api/client-go/v3", # Apache-2.0; licensei cannot detect it
   "github.com/xeipuuv/gojsonpointer",
   "github.com/xeipuuv/gojsonreference",
   "github.com/xeipuuv/gojsonschema",
